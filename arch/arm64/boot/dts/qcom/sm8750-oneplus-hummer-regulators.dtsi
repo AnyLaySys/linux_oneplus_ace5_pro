@@ -1,0 +1,148 @@
+&{/soc@0/rsc@16500000/regulators-0} {
+	/delete-property/ vdd-bob1-supply;
+	/delete-property/ vdd-l1-l4-l10-supply;
+	/delete-property/ vdd-l2-l13-l14-supply;
+	/delete-property/ vdd-l3-supply;
+	/delete-property/ vdd-l5-l16-supply;
+	/delete-property/ vdd-l6-l7-supply;
+	/delete-property/ vdd-l8-l9-supply;
+	/delete-property/ vdd-l11-supply;
+	/delete-property/ vdd-l12-supply;
+	/delete-property/ vdd-l15-supply;
+	bob1 {
+		status = "disabled";
+	};
+	ldo1 {
+		status = "disabled";
+	};
+	ldo2 {
+		status = "disabled";
+	};
+	ldo4 {
+		status = "disabled";
+	};
+	ldo5 {
+		status = "disabled";
+	};
+	ldo6 {
+		status = "disabled";
+	};
+	ldo7 {
+		status = "disabled";
+	};
+	ldo8 {
+		status = "disabled";
+	};
+	ldo9 {
+		status = "disabled";
+	};
+	ldo10 {
+		status = "disabled";
+	};
+	ldo11 {
+		status = "disabled";
+	};
+	ldo12 {
+		status = "disabled";
+	};
+	ldo13 {
+		status = "disabled";
+	};
+	ldo14 {
+		status = "disabled";
+	};
+	ldo15 {
+		status = "disabled";
+	};
+	ldo16 {
+		status = "disabled";
+	};
+};
+
+&{/soc@0/rsc@16500000/regulators-1} {
+	/delete-property/ vdd-l2-supply;
+	/delete-property/ vdd-l3-supply;
+	/delete-property/ vdd-s3-supply;
+	/delete-property/ vdd-s4-supply;
+	smps3 {
+		status = "disabled";
+	};
+	smps4 {
+		status = "disabled";
+	};
+	ldo2 {
+		status = "disabled";
+	};
+	ldo3 {
+		status = "disabled";
+	};
+};
+
+&{/soc@0/rsc@16500000/regulators-2} {
+	status = "disabled";
+};
+
+&{/soc@0/rsc@16500000/regulators-3} {
+	/delete-property/ vdd-l1-supply;
+	/delete-property/ vdd-l2-supply;
+	/delete-property/ vdd-s1-supply;
+	/delete-property/ vdd-s3-supply;
+	smps1 {
+		status = "disabled";
+	};
+	smps3 {
+		status = "disabled";
+	};
+	smps4 {
+		status = "disabled";
+	};
+	ldo1 {
+		status = "disabled";
+	};
+	ldo2 {
+		status = "disabled";
+	};
+};
+
+&{/soc@0/rsc@16500000/regulators-4} {
+	/delete-property/ vdd-l1-supply;
+	/delete-property/ vdd-l2-supply;
+	/delete-property/ vdd-l3-supply;
+	/delete-property/ vdd-s8-supply;
+	smps8 {
+		status = "disabled";
+	};
+	ldo1 {
+		status = "disabled";
+	};
+	ldo2 {
+		status = "disabled";
+	};
+	ldo3 {
+		status = "disabled";
+	};
+};
+
+&{/soc@0/rsc@16500000/regulators-5} {
+	/delete-property/ vdd-l2-supply;
+	/delete-property/ vdd-s2-supply;
+	/delete-property/ vdd-s3-supply;
+	/delete-property/ vdd-s4-supply;
+	smps2 {
+		status = "disabled";
+	};
+	smps3 {
+		status = "disabled";
+	};
+	ldo2 {
+		status = "disabled";
+	};
+};
+
+&{/soc@0/rsc@16500000/regulators-6} {
+	status = "disabled";
+};
+
+&{/soc@0/rsc@16500000/regulators-7} {
+	status = "disabled";
+};

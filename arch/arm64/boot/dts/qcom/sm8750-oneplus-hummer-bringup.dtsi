@@ -1,0 +1,647 @@
+&{/reserved-memory/android_ramoops@880000000} {
+	compatible = "ramoops";
+	record-size = <0>;
+	console-size = <0x40000>;
+	pmsg-size = <0x200000>;
+	ftrace-size = <0>;
+	mem-type = <0>;
+};
+
+&{/firmware} {
+	status = "disabled";
+};
+
+&{/interconnect-0} {
+	status = "disabled";
+};
+
+&{/interconnect-1} {
+	status = "disabled";
+};
+
+&{/pmu} {
+	status = "disabled";
+};
+
+&{/smp2p-adsp} {
+	status = "disabled";
+};
+
+&{/smp2p-cdsp} {
+	status = "disabled";
+};
+
+&{/smp2p-modem} {
+	status = "disabled";
+};
+
+&{/soc@0/clock-controller@100000} {
+	status = "disabled";
+};
+
+&{/soc@0/mailbox@406000} {
+	status = "disabled";
+};
+
+&{/soc@0/dma-controller@800000} {
+	status = "disabled";
+};
+
+&{/soc@0/geniqup@8c0000} {
+	status = "disabled";
+};
+
+&{/soc@0/geniqup@9c0000} {
+	status = "disabled";
+};
+
+&{/soc@0/dma-controller@a00000} {
+	status = "disabled";
+};
+
+&{/soc@0/geniqup@ac0000} {
+	status = "disabled";
+};
+
+&{/soc@0/rng@10c3000} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@1500000} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@1600000} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@1680000} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@16c0000} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@16e0000} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@1700000} {
+	status = "disabled";
+};
+
+&{/soc@0/clock-controller@1760000} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@1780000} {
+	status = "disabled";
+};
+
+&{/soc@0/crypto@1d88000} {
+	status = "disabled";
+};
+
+&{/soc@0/dma-controller@1dc4000} {
+	status = "disabled";
+};
+
+&{/soc@0/crypto@1dfa000} {
+	status = "disabled";
+};
+
+&{/soc@0/hwlock@1f40000} {
+	status = "disabled";
+};
+
+&{/soc@0/remoteproc@4080000} {
+	status = "disabled";
+};
+
+&{/soc@0/remoteproc@6800000} {
+	status = "disabled";
+};
+
+&{/soc@0/codec@6aa0000} {
+	status = "disabled";
+};
+
+&{/soc@0/soundwire@6ab0000} {
+	status = "disabled";
+};
+
+&{/soc@0/codec@6ac0000} {
+	status = "disabled";
+};
+
+&{/soc@0/soundwire@6ad0000} {
+	status = "disabled";
+};
+
+&{/soc@0/codec@6ae0000} {
+	status = "disabled";
+};
+
+&{/soc@0/codec@6b00000} {
+	status = "disabled";
+};
+
+&{/soc@0/soundwire@6b10000} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@7e40000} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@7400000} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@7420000} {
+	status = "disabled";
+};
+
+&{/soc@0/soundwire@7630000} {
+	status = "disabled";
+};
+
+&{/soc@0/codec@7660000} {
+	status = "disabled";
+};
+
+&{/soc@0/pinctrl@7760000} {
+	status = "disabled";
+};
+
+&{/soc@0/mmc@8804000} {
+	status = "disabled";
+};
+
+&{/soc@0/phy@88e3000} {
+	status = "disabled";
+};
+
+&{/soc@0/phy@88e8000} {
+	status = "disabled";
+};
+
+&{/soc@0/usb@a600000} {
+	status = "disabled";
+};
+
+&{/soc@0/video-codec@aa00000} {
+	status = "disabled";
+};
+
+&{/soc@0/clock-controller@aaf0000} {
+	status = "disabled";
+};
+
+&{/soc@0/display-subsystem@ae00000} {
+	status = "disabled";
+};
+
+&{/soc@0/clock-controller@af00000} {
+	status = "disabled";
+};
+
+&{/soc@0/clock-controller@ade0000} {
+	status = "disabled";
+};
+
+&{/soc@0/interrupt-controller@b220000} {
+	status = "disabled";
+};
+
+&{/soc@0/thermal-sensor@c228000} {
+	status = "disabled";
+};
+
+&{/soc@0/thermal-sensor@c229000} {
+	status = "disabled";
+};
+
+&{/soc@0/thermal-sensor@c22a000} {
+	status = "disabled";
+};
+
+&{/soc@0/thermal-sensor@c22b000} {
+	status = "disabled";
+};
+
+&{/soc@0/power-management@c300000} {
+	status = "disabled";
+};
+
+&{/soc@0/sram@c3f0000} {
+	status = "disabled";
+};
+
+&{/soc@0/spmi@c400000} {
+	status = "disabled";
+};
+
+&{/soc@0/pinctrl@f100000} {
+	status = "disabled";
+};
+
+&{/soc@0/clock-controller@f204008} {
+	status = "disabled";
+};
+
+&{/soc@0/stm@10002000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpda@10004000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@1000f000} {
+	status = "disabled";
+};
+
+&{/soc@0/funnel@10041000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@10800000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpda@10803000} {
+	status = "disabled";
+};
+
+&{/soc@0/funnel@10804000} {
+	status = "disabled";
+};
+
+&{/soc@0/cti@1080b000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@1082c000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@10841000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@1084e000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@1084f000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@10850000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpda@10851000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@10980000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpda@10986000} {
+	status = "disabled";
+};
+
+&{/soc@0/funnel@10987000} {
+	status = "disabled";
+};
+
+&{/soc@0/cti@1098b000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@109a3000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@109a4000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@109a5000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@109a6000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@109a7000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@109a8000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@109a9000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@109aa000} {
+	status = "disabled";
+};
+
+&{/soc@0/tn@109ab000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@109d0000} {
+	status = "disabled";
+};
+
+&{/soc@0/funnel@10b04000} {
+	status = "disabled";
+};
+
+&{/soc@0/tmc@10b05000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpda@10b08000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@10b09000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@10b0a000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@10b0b000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@10b0c000} {
+	status = "disabled";
+};
+
+&{/soc@0/tpdm@10b0d000} {
+	status = "disabled";
+};
+
+&{/soc@0/iommu@15000000} {
+	status = "disabled";
+};
+
+&{/soc@0/pcie@1c00000} {
+	status = "disabled";
+};
+
+&{/soc@0/phy@1c06000} {
+	status = "disabled";
+};
+
+&{/soc@0/phy@1d80000} {
+	status = "disabled";
+};
+
+&{/soc@0/ufs@1d84000} {
+	status = "disabled";
+};
+
+&{/soc@0/mailbox@16430000} {
+	status = "disabled";
+};
+
+&{/soc@0/rsc@16500000} {
+	status = "disabled";
+};
+
+&{/soc@0/timer@16800000} {
+	status = "disabled";
+};
+
+&{/soc@0/sram@17b4e000} {
+	status = "disabled";
+};
+
+&{/soc@0/pmu@240b3400} {
+	status = "disabled";
+};
+
+&{/soc@0/pmu@240b7400} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@24100000} {
+	status = "disabled";
+};
+
+&{/soc@0/system-cache-controller@24800000} {
+	status = "disabled";
+};
+
+&{/soc@0/interconnect@320c0000} {
+	status = "disabled";
+};
+
+&{/soc@0/remoteproc@32300000} {
+	status = "disabled";
+};
+
+&{/thermal-zones} {
+	status = "disabled";
+};
+
+&{/tpdm-cdsp-llm} {
+	status = "disabled";
+};
+
+&{/tpdm-cdsp-llm2} {
+	status = "disabled";
+};
+
+&{/tpdm-modem1} {
+	status = "disabled";
+};
+
+&{/reboot-mode} {
+	status = "disabled";
+};
+
+&{/clocks} {
+	status = "disabled";
+};
+
+&{/vph-pwr-regulator} {
+	status = "disabled";
+};
+
+&cpu0 {
+	/delete-property/ power-domains;
+	/delete-property/ power-domain-names;
+};
+
+&cpu1 {
+	/delete-property/ power-domains;
+	/delete-property/ power-domain-names;
+};
+
+&cpu2 {
+	/delete-property/ power-domains;
+	/delete-property/ power-domain-names;
+};
+
+&cpu3 {
+	/delete-property/ power-domains;
+	/delete-property/ power-domain-names;
+};
+
+&cpu4 {
+	/delete-property/ power-domains;
+	/delete-property/ power-domain-names;
+};
+
+&cpu5 {
+	/delete-property/ power-domains;
+	/delete-property/ power-domain-names;
+};
+
+&cpu6 {
+	/delete-property/ power-domains;
+	/delete-property/ power-domain-names;
+};
+
+&cpu7 {
+	/delete-property/ power-domains;
+	/delete-property/ power-domain-names;
+};
+
+&{/reserved-memory/aop_cmd_db_region@81c60000} {
+	/delete-property/ compatible;
+};
+
+&{/reserved-memory/smem_region@81d00000} {
+	/delete-property/ compatible;
+};
+
+&{/reserved-memory/android_ramoops@880000000} {
+	mem-type = <2>;
+};
+#include "sm8750-oneplus-hummer-regulators.dtsi"
+
+&{/firmware} {
+	status = "okay";
+};
+
+&{/firmware/scmi} {
+	status = "disabled";
+};
+
+&{/clocks} {
+	status = "okay";
+};
+
+&vph_pwr {
+	status = "okay";
+};
+
+&{/reserved-memory/aop_cmd_db_region@81c60000} {
+	compatible = "qcom,cmd-db";
+};
+
+&apps_rsc {
+	/delete-property/ power-domains;
+	status = "okay";
+};
+
+&gcc {
+	status = "okay";
+};
+
+&tcsrcc {
+	status = "okay";
+};
+
+&mc_virt {
+	status = "okay";
+};
+
+&config_noc {
+	status = "okay";
+};
+
+&cnoc_main {
+	status = "okay";
+};
+
+&system_noc {
+	status = "okay";
+};
+
+&aggre1_noc {
+	status = "okay";
+};
+
+&aggre2_noc {
+	status = "okay";
+};
+
+&gem_noc {
+	status = "okay";
+};
+
+&tlmm {
+	/delete-property/ wakeup-parent;
+	status = "okay";
+};
+
+&apps_smmu {
+	status = "okay";
+};
+
+&vreg_l1j_0p91 {
+	regulator-min-microvolt = <912000>;
+};
+
+&ufs_mem_hc {
+	/delete-property/ qcom,ice;
+};
+
+&rpmhpd {
+	oneplus,keep-unclaimed-rpmh-votes;
+};
+
+&scm {
+	status = "disabled";
+};
+
+&{/reserved-memory/mu_dxe_heap@bd930000} {
+	/delete-property/ no-map;
+};
+
+&{/reserved-memory/mu_dxe_heap_tail@d5100000} {
+	/delete-property/ no-map;
+};
+
+&scm {
+	status = "okay";
+};
+
+&tlmm {
+	gpio-reserved-ranges = <0 215>;
+};
+
+&ufs_mem_phy {
+	status = "okay";
+};
+
+&ufs_mem_hc {
+	status = "okay";
+};
