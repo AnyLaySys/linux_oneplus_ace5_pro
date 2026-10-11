@@ -12,6 +12,10 @@ menuconfig INPUT_TOUCHSCREEN
 
 if INPUT_TOUCHSCREEN
 
+config TOUCHSCREEN_SYNAPTICS_S3910
+	tristate "Synaptics S3910 SPI touchscreen"
+	depends on SPI_MASTER && GPIOLIB
+
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
 	depends on MFD_88PM860X

@@ -1513,7 +1513,7 @@ MODULE_DEVICE_TABLE(of, qnoc_of_match);
 static void sm8750_icc_sync_state(struct device *dev)
 {
 	if (of_property_read_bool(dev->of_node, "oneplus,keep-boot-bandwidth")) {
-		dev_info(dev, "HUMMER_M6_KEEP_BOOT_BANDWIDTH\n");
+		dev_info(dev, "keeping boot bandwidth vote\n");
 		return;
 	}
 

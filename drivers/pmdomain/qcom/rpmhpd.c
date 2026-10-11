@@ -1207,7 +1207,7 @@ static void rpmhpd_sync_state(struct device *dev)
 
 		pd->state_synced = true;
 		if (keep_unclaimed && !pd->enabled) {
-			dev_info(dev, "HUMMER_M6_KEEP_BOOT_VOTE %s\n", pd->pd.name);
+			dev_info(dev, "keeping boot vote %s\n", pd->pd.name);
 			continue;
 		}
 		if (pd->enabled)

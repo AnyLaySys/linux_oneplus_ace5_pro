@@ -27,6 +27,8 @@ properties:
           - qcom,wcn6750-pmu
           - qcom,wcn6855-pmu
           - qcom,wcn7850-pmu
+          - qcom,wcn786x-pmu
+          - qcom,wcn7861-pmu
 
   vdd-supply:
     description: VDD supply regulator handle
@@ -84,6 +86,9 @@ properties:
 
   vddio-supply:
     description: VDD_IO supply regulator handle
+
+  vddant-supply:
+    description: External antenna frontend supply regulator handle
 
   wlan-enable-gpios:
     maxItems: 1
@@ -182,6 +187,24 @@ allOf:
         - vdddig-supply
         - vddrfa1p2-supply
         - vddrfa1p8-supply
+
+  - if:
+      properties:
+        compatible:
+          enum:
+            - qcom,wcn786x-pmu
+            - qcom,wcn7861-pmu
+    then:
+      required:
+        - vdd-supply
+        - vddio-supply
+        - vddio1p2-supply
+        - vddaon-supply
+        - vdddig-supply
+        - vddrfa1p2-supply
+        - vddrfa1p8-supply
+        - wlan-enable-gpios
+        - clocks
 
 additionalProperties: false
 

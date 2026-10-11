@@ -320,25 +320,25 @@ static int psci_sys_reset(struct notifier_block *nb, unsigned long action,
 		 * cookie = 0 (ignored by the implementation)
 		 */
 		if (hummer)
-			pr_emerg("hummer M4: PSCI SYSTEM_RESET2 warm request\n");
+			pr_info("SYSTEM_RESET2 warm request\n");
 		ret = invoke_psci_fn(PSCI_FN_NATIVE(1_1, SYSTEM_RESET2), 0, 0, 0);
 		if (hummer) {
 			if (ret == PSCI_RET_NOT_SUPPORTED) {
-				pr_emerg("hummer M4: RESET2_64 unsupported; trying RESET2_32 warm\n");
+				pr_warn("SYSTEM_RESET2 (64-bit) unsupported; trying 32-bit\n");
 				ret = invoke_psci_fn(PSCI_1_1_FN_SYSTEM_RESET2, 0, 0, 0);
-				pr_emerg("hummer M4: RESET2_32 returned %d\n", ret);
+				pr_warn("SYSTEM_RESET2 (32-bit) returned %d\n", ret);
 			}
-			pr_emerg("hummer M4: PSCI SYSTEM_RESET2 returned %d; trying SYSTEM_RESET\n", ret);
+			pr_warn("SYSTEM_RESET2 returned %d; falling back to SYSTEM_RESET\n", ret);
 			ret = invoke_psci_fn(PSCI_0_2_FN_SYSTEM_RESET, 0, 0, 0);
-			pr_emerg("hummer M4: PSCI SYSTEM_RESET returned %d\n", ret);
+			pr_warn("SYSTEM_RESET returned %d\n", ret);
 		}
 	} else {
 		if (hummer)
-			pr_emerg("hummer M4: PSCI SYSTEM_RESET request, reset2=%d mode=%d\n",
+			pr_info("SYSTEM_RESET request (reset2=%d mode=%d)\n",
 				 psci_system_reset2_supported, reboot_mode);
 		ret = invoke_psci_fn(PSCI_0_2_FN_SYSTEM_RESET, 0, 0, 0);
 		if (hummer)
-			pr_emerg("hummer M4: PSCI SYSTEM_RESET returned %d\n", ret);
+			pr_warn("SYSTEM_RESET returned %d\n", ret);
 	}
 
 	return NOTIFY_DONE;

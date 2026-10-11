@@ -102,9 +102,6 @@ MODULE_ALIAS_SCSI_DEVICE(TYPE_ZBC);
 
 #define SD_MINORS	16
 
-static bool hummer_read_only;
-module_param(hummer_read_only, bool, 0444);
-
 static void sd_config_write_same(struct scsi_disk *sdkp,
 		struct queue_limits *lim);
 static void  sd_revalidate_disk(struct gendisk *);
@@ -3057,13 +3054,6 @@ sd_read_write_protect_flag(struct scsi_disk *sdkp, unsigned char *buffer)
 	struct scsi_device *sdp = sdkp->device;
 	struct scsi_mode_data data;
 	int old_wp = sdkp->write_prot;
-
-	if (hummer_read_only) {
-		sdkp->write_prot = 1;
-		set_disk_ro(sdkp->disk, 1);
-		sd_first_printk(KERN_NOTICE, sdkp, "HUMMER_M6 forced read-only disk\n");
-		return;
-	}
 
 	set_disk_ro(sdkp->disk, 0);
 	if (sdp->skip_ms_page_3f) {

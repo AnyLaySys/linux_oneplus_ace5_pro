@@ -113,9 +113,6 @@ enum {
 /* UFSHC 4.0 compliant HC support this mode. */
 static bool use_mcq_mode = true;
 
-static bool hummer_read_only;
-module_param(hummer_read_only, bool, 0444);
-
 static bool is_mcq_supported(struct ufs_hba *hba)
 {
 	return hba->mcq_sup && use_mcq_mode;
@@ -3059,34 +3056,6 @@ static int ufshcd_init_cmd_priv(struct Scsi_Host *host, struct scsi_cmnd *cmd)
  *
  * Return: 0 for success, non-zero in case of failure.
  */
-static bool hummer_m6_scsi_allowed(const struct scsi_cmnd *cmd)
-{
-	if (cmd->sc_data_direction != DMA_NONE &&
-	    cmd->sc_data_direction != DMA_FROM_DEVICE)
-		return false;
-
-	switch (cmd->cmnd[0]) {
-	case TEST_UNIT_READY:
-	case REQUEST_SENSE:
-	case INQUIRY:
-	case READ_CAPACITY:
-	case REPORT_LUNS:
-	case MODE_SENSE:
-	case MODE_SENSE_10:
-	case READ_6:
-	case READ_10:
-	case READ_12:
-	case READ_16:
-	case START_STOP:
-	case SYNCHRONIZE_CACHE:
-		return true;
-	case SERVICE_ACTION_IN_16:
-		return (cmd->cmnd[1] & 0x1f) == SAI_READ_CAPACITY_16;
-	default:
-		return false;
-	}
-}
-
 static enum scsi_qc_status ufshcd_queuecommand(struct Scsi_Host *host,
 					       struct scsi_cmnd *cmd)
 {
@@ -3094,15 +3063,6 @@ static enum scsi_qc_status ufshcd_queuecommand(struct Scsi_Host *host,
 	int tag = scsi_cmd_to_rq(cmd)->tag;
 	int err = 0;
 	struct ufs_hw_queue *hwq = NULL;
-
-	if (hummer_read_only && !hummer_m6_scsi_allowed(cmd)) {
-		dev_warn_ratelimited(hba->dev, "HUMMER_M6 blocked SCSI opcode=%02x direction=%d\n",
-				     cmd->cmnd[0], cmd->sc_data_direction);
-		scsi_build_sense_buffer(0, cmd->sense_buffer, DATA_PROTECT, 0x27, 0);
-		cmd->result = SAM_STAT_CHECK_CONDITION;
-		scsi_done(cmd);
-		return 0;
-	}
 
 	switch (hba->ufshcd_state) {
 	case UFSHCD_STATE_OPERATIONAL:
