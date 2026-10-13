@@ -45,7 +45,7 @@
 	};
 
 	chosen {
-		bootargs = "acpi=off";
+		bootargs = "acpi=off module_blacklist=qcom_battmgr";
 	};
 
 	clocks {

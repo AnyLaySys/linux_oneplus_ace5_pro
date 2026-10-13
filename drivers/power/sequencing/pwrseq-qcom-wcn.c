@@ -823,7 +823,8 @@ static int pwrseq_qcom_wcn_match(struct pwrseq_device *pwrseq,
 	struct pwrseq_qcom_wcn_ctx *ctx = pwrseq_device_get_drvdata(pwrseq);
 
 	if (ctx->pdata == &pwrseq_wcn7861_of_data &&
-	    of_device_is_compatible(dev->of_node, "pci17cb,110e"))
+	    (of_device_is_compatible(dev->of_node, "pci17cb,110e") ||
+	     of_device_is_compatible(dev->of_node, "qcom,wcn7850-bt")))
 		return PWRSEQ_MATCH_OK;
 
 	return pwrseq_qcom_wcn_match_regulator(pwrseq, dev, "vddaon-supply");

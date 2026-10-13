@@ -639,7 +639,7 @@
 };
 
 &tlmm {
-	gpio-reserved-ranges = <0 16>, <17 31>, <52 50>, <105 56>, <163 52>;
+	gpio-reserved-ranges = <0 16>, <17 7>, <28 20>, <52 14>, <68 34>, <105 56>, <163 52>;
 
 	touch_reset_default: touch-reset-default-state {
 		pins = "gpio161";
@@ -730,8 +730,9 @@
 			"VDDD_BTCX_0P9:s5f", "VDDD_BTCMX_0P85:s5f",
 			"VDDA_PCIE_1P2:s7i", "VDDA_PCIE_0P9:s7i";
 		pinctrl-names = "default";
-		pinctrl-0 = <&wlan_en_default>;
+		pinctrl-0 = <&wlan_en_default &bt_en_default>;
 		wlan-enable-gpios = <&tlmm 16 GPIO_ACTIVE_HIGH>;
+		bt-enable-gpios = <&pm8550ve_f_gpios 3 GPIO_ACTIVE_HIGH>;
 		clocks = <&rpmhcc RPMH_RF_CLK1>;
 		vdd-supply = <&vreg_s5f_0p85>;
 		vddio-supply = <&vreg_l3f_1p8>;
@@ -750,6 +751,49 @@
 		function = "gpio";
 		drive-strength = <2>;
 		bias-pull-down;
+	};
+};
+
+&pm8550ve_f_gpios {
+	bt_en_default: bt-en-default-state {
+		pins = "gpio3";
+		function = "normal";
+		output-enable;
+		bias-disable;
+		power-source = <1>;
+	};
+};
+
+&{/} {
+	aliases {
+		serial0 = &uart14;
+	};
+};
+
+&qupv3_2 {
+	status = "okay";
+};
+
+&i2c_master_hub_0 {
+	status = "okay";
+};
+
+&i2c_hub_1 {
+	status = "okay";
+
+	battery@55 {
+		compatible = "ti,bq28z610";
+		reg = <0x55>;
+	};
+};
+
+&uart14 {
+	pinctrl-0 = <&qup_uart14_default &qup_uart14_cts_rts>;
+	status = "okay";
+
+	bluetooth {
+		compatible = "qcom,wcn7850-bt";
+		max-speed = <3200000>;
 	};
 };
 
