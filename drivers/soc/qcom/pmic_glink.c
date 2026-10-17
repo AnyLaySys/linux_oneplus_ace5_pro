@@ -77,14 +77,17 @@ static void _devm_pmic_glink_release_client(struct device *dev, void *res)
 	spin_unlock_irqrestore(&pg->client_lock, flags);
 }
 
-struct pmic_glink_client *devm_pmic_glink_client_alloc(struct device *dev,
-						       unsigned int id,
-						       void (*cb)(const void *, size_t, void *),
-						       void (*pdr)(void *, int),
-						       void *priv)
+static struct pmic_glink_client *pmic_glink_client_alloc(struct device *dev,
+							 struct pmic_glink *pg,
+							 unsigned int id,
+							 void (*cb)(const void *, size_t, void *),
+							 void (*pdr)(void *, int),
+							 void *priv)
 {
 	struct pmic_glink_client *client;
-	struct pmic_glink *pg = dev_get_drvdata(dev->parent);
+
+	if (!pg)
+		return ERR_PTR(-EPROBE_DEFER);
 
 	client = devres_alloc(_devm_pmic_glink_release_client, sizeof(*client), GFP_KERNEL);
 	if (!client)
@@ -101,7 +104,34 @@ struct pmic_glink_client *devm_pmic_glink_client_alloc(struct device *dev,
 
 	return client;
 }
+
+struct pmic_glink_client *devm_pmic_glink_client_alloc(struct device *dev,
+						       unsigned int id,
+						       void (*cb)(const void *, size_t, void *),
+						       void (*pdr)(void *, int),
+						       void *priv)
+{
+	return pmic_glink_client_alloc(dev, dev_get_drvdata(dev->parent), id, cb, pdr, priv);
+}
 EXPORT_SYMBOL_GPL(devm_pmic_glink_client_alloc);
+
+struct pmic_glink_client *devm_pmic_glink_client_alloc_global(struct device *dev,
+							      unsigned int id,
+							      void (*cb)(const void *, size_t, void *),
+							      void (*pdr)(void *, int),
+							      void *priv)
+{
+	struct pmic_glink *pg;
+
+	mutex_lock(&__pmic_glink_lock);
+	pg = __pmic_glink;
+	mutex_unlock(&__pmic_glink_lock);
+	if (!pg)
+		return ERR_PTR(-EPROBE_DEFER);
+
+	return pmic_glink_client_alloc(dev, pg, id, cb, pdr, priv);
+}
+EXPORT_SYMBOL_GPL(devm_pmic_glink_client_alloc_global);
 
 void pmic_glink_client_register(struct pmic_glink_client *client)
 {

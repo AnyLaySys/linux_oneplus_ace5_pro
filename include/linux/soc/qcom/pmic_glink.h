@@ -7,6 +7,7 @@
 
 struct pmic_glink;
 struct pmic_glink_client;
+struct device;
 
 #define PMIC_GLINK_OWNER_BATTMGR	32778
 #define PMIC_GLINK_OWNER_USBC		32779
@@ -28,6 +29,11 @@ struct pmic_glink_client *devm_pmic_glink_client_alloc(struct device *dev,
 						       void (*cb)(const void *, size_t, void *),
 						       void (*pdr)(void *, int),
 						       void *priv);
+struct pmic_glink_client *devm_pmic_glink_client_alloc_global(struct device *dev,
+							      unsigned int id,
+							      void (*cb)(const void *, size_t, void *),
+							      void (*pdr)(void *, int),
+							      void *priv);
 void pmic_glink_client_register(struct pmic_glink_client *client);
 
 #endif

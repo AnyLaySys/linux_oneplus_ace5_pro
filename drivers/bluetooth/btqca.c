@@ -6,11 +6,15 @@
  */
 #include <linux/module.h>
 #include <linux/firmware.h>
+#include <linux/jiffies.h>
+#include <linux/kernel.h>
+#include <linux/serdev.h>
 #include <linux/vmalloc.h>
 
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
 
+#include "hci_uart.h"
 #include "btqca.h"
 
 int qca_read_soc_version(struct hci_dev *hdev, struct qca_btsoc_version *ver,
@@ -544,6 +548,34 @@ out:
 	return err;
 }
 
+static int qca_wait_for_uart_tx(struct hci_dev *hdev, size_t size)
+{
+	struct hci_uart *hu = hci_get_drvdata(hdev);
+	unsigned long deadline;
+	long remaining;
+
+	if (!hu->serdev || !hu->oper_speed)
+		return -EOPNOTSUPP;
+	if (hu->oper_speed == 8000000)
+		return 0;
+
+	deadline = jiffies + msecs_to_jiffies(
+		DIV_ROUND_UP_ULL((u64)size * 11000, hu->oper_speed));
+
+	do {
+		flush_work(&hu->write_work);
+		remaining = time_after(deadline, jiffies) ? deadline - jiffies : 0;
+		if (!remaining)
+			return -ETIMEDOUT;
+
+		serdev_device_wait_until_sent(hu->serdev, remaining);
+	} while (READ_ONCE(hu->tx_skb) ||
+		 test_bit(HCI_UART_SENDING, &hu->tx_state) ||
+		 test_bit(HCI_UART_TX_WAKEUP, &hu->tx_state));
+
+	return 0;
+}
+
 static int qca_inject_cmd_complete_event(struct hci_dev *hdev)
 {
 	struct hci_event_hdr *hdr;
@@ -629,6 +661,13 @@ static int qca_download_firmware(struct hci_dev *hdev,
 		/* The last segment is always acked regardless download mode */
 		if (!remain || segsize < MAX_SIZE_PER_TLV_SEGMENT)
 			config->dnld_mode = QCA_SKIP_EVT_NONE;
+
+		if (!remain && config->type == TLV_TYPE_PATCH &&
+		    soc_type == QCA_WCN7850) {
+			ret = qca_wait_for_uart_tx(hdev, size);
+			if (ret)
+				goto out;
+		}
 
 		ret = qca_tlv_send_segment(hdev, segsize, segment,
 					   config->dnld_mode, soc_type);

@@ -1,0 +1,16 @@
+menuconfig OPLUS_CHARGER
+	bool "OPLUS charging system"
+	depends on I2C
+	select REGMAP_I2C
+
+if OPLUS_CHARGER
+
+config OPLUS_CHG_V2
+	tristate "OPLUS charging V2 system"
+	depends on POWER_SUPPLY && QCOM_PMIC_GLINK
+
+if OPLUS_CHG_V2
+source "drivers/power/oplus/v2/Kconfig"
+endif
+
+endif

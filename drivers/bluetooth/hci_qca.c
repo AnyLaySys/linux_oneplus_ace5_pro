@@ -21,6 +21,7 @@
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/devcoredump.h>
+#include <linux/firmware.h>
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
 #include <linux/module.h>
@@ -1267,6 +1268,147 @@ static int qca_recv_event(struct hci_dev *hdev, struct sk_buff *skb)
 	.lsize = 0, \
 	.maxlen = HCI_MAX_IBS_SIZE
 
+static DECLARE_COMPLETION(qca_peri_rx);
+static bool qca_peri_patch_loaded;
+
+static int qca_recv_peri(struct hci_dev *hdev __maybe_unused,
+			 struct sk_buff *skb)
+{
+	qca_peri_patch_loaded = skb->len >= 11 && skb->data[10] == 0x17;
+	complete(&qca_peri_rx);
+	kfree_skb(skb);
+	return 0;
+}
+
+#define QCA_PERI_EVENT \
+	.type = 0x34, \
+	.hlen = 3, \
+	.loff = 2, \
+	.lsize = 1, \
+	.maxlen = HCI_MAX_EVENT_SIZE
+
+static int qca_peri_cmd(struct hci_uart *hu, const u8 *cmd, size_t len,
+			unsigned int timeout_ms)
+{
+	ssize_t written;
+
+	qca_peri_patch_loaded = false;
+	reinit_completion(&qca_peri_rx);
+	written = serdev_device_write(hu->serdev, cmd, len,
+				      MAX_SCHEDULE_TIMEOUT);
+	if (written != len)
+		return written < 0 ? written : -EIO;
+	serdev_device_wait_until_sent(hu->serdev, 0);
+	if (!timeout_ms)
+		return 0;
+
+	while (wait_for_completion_timeout(&qca_peri_rx,
+					  msecs_to_jiffies(timeout_ms))) {
+		reinit_completion(&qca_peri_rx);
+		timeout_ms = 300;
+	}
+
+	return 0;
+}
+
+static int qca_peri_tlv(struct hci_uart *hu, const char *name)
+{
+	const struct firmware *fw;
+	u8 packet[8 + 243];
+	size_t off;
+	int ret;
+
+	ret = request_firmware(&fw, name, &hu->hdev->dev);
+	if (ret)
+		return ret;
+
+	for (off = 0; off < fw->size; off += 243) {
+		int size = min_t(size_t, 243, fw->size - off);
+		bool last = off + size == fw->size;
+		ssize_t written;
+
+		packet[0] = 0x31;
+		packet[1] = 0x00;
+		packet[2] = 0xf0;
+		packet[3] = 0xff;
+		packet[4] = size + 3;
+		packet[5] = 0x06;
+		packet[6] = 0x00;
+		packet[7] = size;
+		memcpy(packet + 8, fw->data + off, size);
+		reinit_completion(&qca_peri_rx);
+		written = serdev_device_write(hu->serdev, packet, size + 8,
+					      MAX_SCHEDULE_TIMEOUT);
+		if (written != size + 8) {
+			ret = written < 0 ? written : -EIO;
+			goto out;
+		}
+		wait_for_completion_timeout(&qca_peri_rx,
+					   msecs_to_jiffies(last ? 1000 : 2));
+	}
+	ret = 0;
+out:
+	release_firmware(fw);
+	return ret;
+}
+
+static int qca_peach_setup(struct hci_uart *hu,
+			   struct qca_btsoc_version *ver)
+{
+	static const u8 arb[] = { 0x31, 0x00, 0xf0, 0xff, 0x03, 0x08, 0x00, 0x00 };
+	static const u8 act[] = { 0x31, 0x00, 0xf1, 0xff, 0x03, 0x00, 0x01, 0x01 };
+	static const u8 rst[] = { 0x31, 0x00, 0xf1, 0xff, 0x01, 0x03 };
+	u8 baud[] = { 0x31, 0x00, 0xf1, 0xff, 0x02, 0x02,
+		      QCA_BAUDRATE_8000000 };
+	u8 wake = 0xfd;
+	int ret, speed;
+	bool patched;
+
+	reinit_completion(&qca_peri_rx);
+	hci_uart_set_flow_control(hu, true);
+	ret = serdev_device_write(hu->serdev, baud, sizeof(baud),
+				  MAX_SCHEDULE_TIMEOUT);
+	if (ret != sizeof(baud)) {
+		hci_uart_set_flow_control(hu, false);
+		return ret < 0 ? ret : -EIO;
+	}
+	serdev_device_wait_until_sent(hu->serdev, 0);
+	msleep(20);
+	speed = serdev_device_set_baudrate(hu->serdev, 8000000);
+	hci_uart_set_flow_control(hu, false);
+	if (speed != 8000000)
+		return -ERANGE;
+	hu->oper_speed = 8000000;
+	if (!wait_for_completion_timeout(&qca_peri_rx,
+					msecs_to_jiffies(1000)))
+		bt_dev_err(hu->hdev, "PERI UART rate change was not acknowledged");
+	else
+		bt_dev_info(hu->hdev, "PERI UART running at 8000000 baud");
+	ret = qca_peri_cmd(hu, arb, sizeof(arb), 2000);
+	if (ret < 0)
+		return ret;
+	patched = qca_peri_patch_loaded;
+	if (!patched) {
+		ret = qca_peri_tlv(hu, "qca/brhperifw20.tlv");
+		if (ret)
+			return ret;
+		ret = qca_peri_tlv(hu, "qca/brhperinv20.bin");
+		if (ret)
+			return ret;
+		qca_peri_cmd(hu, rst, sizeof(rst), 3000);
+	}
+	ret = qca_peri_cmd(hu, act, sizeof(act), 2000);
+	if (ret < 0)
+		return ret;
+	ret = serdev_device_write(hu->serdev, &wake, sizeof(wake),
+				  MAX_SCHEDULE_TIMEOUT);
+	if (ret != sizeof(wake))
+		return ret < 0 ? ret : -EIO;
+	serdev_device_wait_until_sent(hu->serdev, 0);
+	msleep(100);
+	return qca_read_soc_version(hu->hdev, ver, QCA_WCN7850);
+}
+
 static const struct h4_recv_pkt qca_recv_pkts[] = {
 	{ H4_RECV_ACL,             .recv = qca_recv_acl_data },
 	{ H4_RECV_SCO,             .recv = hci_recv_frame    },
@@ -1275,6 +1417,7 @@ static const struct h4_recv_pkt qca_recv_pkts[] = {
 	{ QCA_IBS_WAKE_IND_EVENT,  .recv = qca_ibs_wake_ind  },
 	{ QCA_IBS_WAKE_ACK_EVENT,  .recv = qca_ibs_wake_ack  },
 	{ QCA_IBS_SLEEP_IND_EVENT, .recv = qca_ibs_sleep_ind },
+	{ QCA_PERI_EVENT,          .recv = qca_recv_peri     },
 };
 
 static int qca_recv(struct hci_uart *hu, const void *data, int count)
@@ -1334,6 +1477,8 @@ static uint8_t qca_get_baudrate_value(int speed)
 		return QCA_BAUDRATE_3200000;
 	case 3500000:
 		return QCA_BAUDRATE_3500000;
+	case 8000000:
+		return QCA_BAUDRATE_8000000;
 	default:
 		return QCA_BAUDRATE_115200;
 	}
@@ -1345,6 +1490,10 @@ static int qca_set_baudrate(struct hci_dev *hdev, uint8_t baudrate)
 	struct qca_data *qca = hu->priv;
 	struct sk_buff *skb;
 	u8 cmd[] = { 0x01, 0x48, 0xFC, 0x01, 0x00 };
+
+	if (qca_soc_type(hu) == QCA_WCN7850)
+		return __hci_cmd_sync_status(hdev, 0xfc48, 1, &baudrate,
+					     HCI_CMD_TIMEOUT);
 
 	if (baudrate > QCA_BAUDRATE_3200000)
 		return -EINVAL;
@@ -1393,12 +1542,14 @@ static int qca_set_baudrate(struct hci_dev *hdev, uint8_t baudrate)
 	return 0;
 }
 
-static inline void host_set_baudrate(struct hci_uart *hu, unsigned int speed)
+static inline unsigned int host_set_baudrate(struct hci_uart *hu,
+					     unsigned int speed)
 {
 	if (hu->serdev)
-		serdev_device_set_baudrate(hu->serdev, speed);
-	else
-		hci_uart_set_baudrate(hu, speed);
+		return serdev_device_set_baudrate(hu->serdev, speed);
+
+	hci_uart_set_baudrate(hu, speed);
+	return speed;
 }
 
 static int qca_send_power_pulse(struct hci_uart *hu, bool on)
@@ -1536,7 +1687,11 @@ static int qca_set_speed(struct hci_uart *hu, enum qca_speed_type speed_type)
 		if (ret)
 			goto error;
 
-		host_set_baudrate(hu, speed);
+		if (host_set_baudrate(hu, speed) != speed) {
+			bt_dev_err(hu->hdev, "UART baudrate mismatch at %u", speed);
+			ret = -ERANGE;
+			goto error;
+		}
 
 error:
 		switch (soc_type) {
@@ -1918,9 +2073,10 @@ static int qca_setup(struct hci_uart *hu)
 	const char *firmware_name = qca_get_firmware_name(hu);
 	const char *rampatch_name = qca_get_rampatch_name(hu);
 	int ret;
-	struct qca_btsoc_version ver;
+	struct qca_btsoc_version ver = {};
 	struct qca_serdev *qcadev = NULL;
 	const char *soc_name;
+	bool skip_oper_speed;
 
 	if (hu->serdev)
 		qcadev = serdev_device_get_drvdata(hu->serdev);
@@ -2000,14 +2156,25 @@ retry:
 		qca_set_speed(hu, QCA_INIT_SPEED);
 	}
 
+	skip_oper_speed = soc_type == QCA_WCN7850 &&
+		le32_to_cpu(ver.product_id) == 0x21 &&
+		le32_to_cpu(ver.soc_id) == 0x40210200 &&
+		le16_to_cpu(ver.rom_ver) == 0x0200;
+
 	/* Setup user speed if needed */
 	speed = qca_get_speed(hu, QCA_OPER_SPEED);
 	if (speed) {
-		ret = qca_set_speed(hu, QCA_OPER_SPEED);
-		if (ret)
-			goto out;
-
 		qca_baudrate = qca_get_baudrate_value(speed);
+		if (skip_oper_speed) {
+			hu->oper_speed = qca_get_speed(hu, QCA_INIT_SPEED);
+			ret = qca_peach_setup(hu, &ver);
+			if (ret)
+				goto out;
+		} else {
+			ret = qca_set_speed(hu, QCA_OPER_SPEED);
+			if (ret)
+				goto out;
+		}
 	}
 
 	switch (soc_type) {
@@ -2309,7 +2476,7 @@ static int qca_hci_shutdown(struct hci_dev *hdev)
 	timer_delete_sync(&qca->tx_idle_timer);
 
 	/* Stop sending shutdown command if soc crashes. */
-	if (soc_type != QCA_ROME
+	if (soc_type != QCA_ROME && soc_type != QCA_WCN7850
 		&& qca->memdump_state == QCA_MEMDUMP_IDLE) {
 		qca_send_pre_shutdown_cmd(hdev);
 		usleep_range(8000, 10000);

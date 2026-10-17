@@ -2,6 +2,7 @@
 // Copyright (c) 2022, Linaro Limited
 
 #include <dt-bindings/sound/qcom,q6afe.h>
+#include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <sound/soc.h>
@@ -16,8 +17,9 @@
 #include "sdw.h"
 
 struct sc8280xp_snd_data {
+	struct clk *mi2s_clk;
+	bool mi2s_clk_enabled;
 	bool stream_prepared[AFE_PORT_MAX];
-	struct snd_soc_card *card;
 	struct snd_soc_jack jack;
 	struct snd_soc_jack dp_jack[8];
 	bool jack_setup;
@@ -71,6 +73,7 @@ static int sc8280xp_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				     struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
+	struct sc8280xp_snd_data *data = snd_soc_card_get_drvdata(rtd->card);
 	struct snd_interval *rate = hw_param_interval(params,
 					SNDRV_PCM_HW_PARAM_RATE);
 	struct snd_interval *channels = hw_param_interval(params,
@@ -79,6 +82,10 @@ static int sc8280xp_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	rate->min = rate->max = 48000;
 	snd_mask_set_format(fmt, SNDRV_PCM_FORMAT_S16_LE);
+	if (data->mi2s_clk && cpu_dai->id == SECONDARY_MI2S_RX) {
+		snd_mask_none(fmt);
+		snd_mask_set_format(fmt, SNDRV_PCM_FORMAT_S24_LE);
+	}
 	channels->min = 2;
 	channels->max = 2;
 	switch (cpu_dai->id) {
@@ -96,6 +103,27 @@ static int sc8280xp_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+static int sc8280xp_snd_hw_params(struct snd_pcm_substream *substream,
+				struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
+	struct sc8280xp_snd_data *data = snd_soc_card_get_drvdata(rtd->card);
+	int ret;
+
+	if (!data->mi2s_clk || snd_soc_rtd_to_cpu(rtd, 0)->id != SECONDARY_MI2S_RX ||
+	    data->mi2s_clk_enabled)
+		return 0;
+
+	ret = clk_set_rate(data->mi2s_clk, params_rate(params) * 2 *
+			   snd_pcm_format_physical_width(params_format(params)));
+	if (ret)
+		return ret;
+	ret = clk_prepare_enable(data->mi2s_clk);
+	if (!ret)
+		data->mi2s_clk_enabled = true;
+	return ret;
+}
+
 static int sc8280xp_snd_prepare(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
@@ -111,10 +139,16 @@ static int sc8280xp_snd_hw_free(struct snd_pcm_substream *substream)
 	struct sc8280xp_snd_data *data = snd_soc_card_get_drvdata(rtd->card);
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 
+	if (cpu_dai->id == SECONDARY_MI2S_RX && data->mi2s_clk_enabled) {
+		clk_disable_unprepare(data->mi2s_clk);
+		data->mi2s_clk_enabled = false;
+	}
+
 	return qcom_snd_sdw_hw_free(substream, &data->stream_prepared[cpu_dai->id]);
 }
 
 static const struct snd_soc_ops sc8280xp_be_ops = {
+	.hw_params = sc8280xp_snd_hw_params,
 	.startup = qcom_snd_sdw_startup,
 	.shutdown = qcom_snd_sdw_shutdown,
 	.hw_free = sc8280xp_snd_hw_free,
@@ -150,6 +184,10 @@ static int sc8280xp_platform_probe(struct platform_device *pdev)
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
+
+	data->mi2s_clk = devm_clk_get_optional(dev, "mi2s");
+	if (IS_ERR(data->mi2s_clk))
+		return dev_err_probe(dev, PTR_ERR(data->mi2s_clk), "MI2S clock unavailable\n");
 
 	card->dev = dev;
 	dev_set_drvdata(dev, card);

@@ -1,5 +1,4 @@
 &{/soc@0/rsc@16500000/regulators-0} {
-	/delete-property/ vdd-bob1-supply;
 	/delete-property/ vdd-l1-l4-l10-supply;
 	/delete-property/ vdd-l2-l13-l14-supply;
 	/delete-property/ vdd-l3-supply;
@@ -9,9 +8,6 @@
 	/delete-property/ vdd-l11-supply;
 	/delete-property/ vdd-l12-supply;
 	/delete-property/ vdd-l15-supply;
-	bob1 {
-		status = "disabled";
-	};
 	ldo1 {
 		status = "disabled";
 	};
@@ -106,16 +102,12 @@
 
 &{/soc@0/rsc@16500000/regulators-4} {
 	/delete-property/ vdd-l1-supply;
-	/delete-property/ vdd-l2-supply;
 	/delete-property/ vdd-l3-supply;
 	/delete-property/ vdd-s8-supply;
 	smps8 {
 		status = "disabled";
 	};
 	ldo1 {
-		status = "disabled";
-	};
-	ldo2 {
 		status = "disabled";
 	};
 	ldo3 {

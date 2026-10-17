@@ -12,6 +12,8 @@
 #include <linux/regmap.h>
 #include <linux/bitfield.h>
 #include <linux/gpio/consumer.h>
+#include <linux/notifier.h>
+#include <linux/of.h>
 #include <linux/usb/typec_dp.h>
 #include <linux/usb/typec_mux.h>
 
@@ -197,7 +199,69 @@ struct wcd939x_usbss {
 	enum typec_orientation orientation;
 	unsigned long mode;
 	unsigned int svid;
+	struct notifier_block chg_nb;
+	bool charger_only;
+	bool fast_charger;
 };
+
+#if IS_ENABLED(CONFIG_OPLUS_AUDIO_SWITCH_GLINK)
+#define TYPEC_AUDIO_SWITCH_STATE_DPDM 0
+#define TYPEC_AUDIO_SWITCH_STATE_FAST_CHG 1
+#define TYPEC_AUDIO_SWITCH_STATE_AUDIO 2
+#define TYPEC_AUDIO_SWITCH_STATE_SUPPORT BIT(4)
+
+extern int register_chg_glink_notifier(struct notifier_block *nb);
+extern int unregister_chg_glink_notifier(struct notifier_block *nb);
+
+static int wcd939x_usbss_chg_event(struct notifier_block *nb,
+				      unsigned long event, void *ptr)
+{
+	struct wcd939x_usbss *usbss = container_of(nb, struct wcd939x_usbss, chg_nb);
+	unsigned int select;
+	int ret;
+
+	if (event == TYPEC_AUDIO_SWITCH_STATE_AUDIO) {
+		mutex_lock(&usbss->lock);
+		ret = TYPEC_AUDIO_SWITCH_STATE_SUPPORT |
+			(usbss->fast_charger ? TYPEC_AUDIO_SWITCH_STATE_FAST_CHG :
+			 TYPEC_AUDIO_SWITCH_STATE_DPDM);
+		mutex_unlock(&usbss->lock);
+		return ret;
+	}
+
+	if (event != TYPEC_AUDIO_SWITCH_STATE_DPDM &&
+	    event != TYPEC_AUDIO_SWITCH_STATE_FAST_CHG)
+		return NOTIFY_DONE;
+
+	select = event == TYPEC_AUDIO_SWITCH_STATE_FAST_CHG ?
+		FIELD_PREP(WCD_USBSS_SWITCH_SELECT0_DNL_SWITCHES,
+			   WCD_USBSS_SWITCH_SELECT0_DNL_SWITCH_DN2) |
+		FIELD_PREP(WCD_USBSS_SWITCH_SELECT0_DPR_SWITCHES,
+			   WCD_USBSS_SWITCH_SELECT0_DPR_SWITCH_DR2) :
+		FIELD_PREP(WCD_USBSS_SWITCH_SELECT0_DNL_SWITCHES,
+			   WCD_USBSS_SWITCH_SELECT0_DNL_SWITCH_DN) |
+		FIELD_PREP(WCD_USBSS_SWITCH_SELECT0_DPR_SWITCHES,
+			   WCD_USBSS_SWITCH_SELECT0_DPR_SWITCH_DP);
+
+	mutex_lock(&usbss->lock);
+	ret = regmap_clear_bits(usbss->regmap, WCD_USBSS_SWITCH_SETTINGS_ENABLE,
+				WCD_USBSS_SWITCH_SETTINGS_ENABLE_DNL_SWITCHES |
+				WCD_USBSS_SWITCH_SETTINGS_ENABLE_DPR_SWITCHES);
+	if (!ret)
+		ret = regmap_update_bits(usbss->regmap, WCD_USBSS_SWITCH_SELECT0,
+					 WCD_USBSS_SWITCH_SELECT0_DNL_SWITCHES |
+					 WCD_USBSS_SWITCH_SELECT0_DPR_SWITCHES, select);
+	if (!ret)
+		ret = regmap_set_bits(usbss->regmap, WCD_USBSS_SWITCH_SETTINGS_ENABLE,
+				      WCD_USBSS_SWITCH_SETTINGS_ENABLE_DNL_SWITCHES |
+				      WCD_USBSS_SWITCH_SETTINGS_ENABLE_DPR_SWITCHES);
+	if (!ret)
+		usbss->fast_charger = event == TYPEC_AUDIO_SWITCH_STATE_FAST_CHG;
+	mutex_unlock(&usbss->lock);
+
+	return ret ? NOTIFY_BAD : NOTIFY_OK;
+}
+#endif
 
 static const struct regmap_range_cfg wcd939x_usbss_ranges[] = {
 	{
@@ -610,17 +674,20 @@ static int wcd939x_usbss_probe(struct i2c_client *client)
 	if (IS_ERR(usbss->vdd_supply))
 		return PTR_ERR(usbss->vdd_supply);
 
-	/* Get Codec's MUX & Switch devices */
-	usbss->codec = fwnode_typec_mux_get(dev->fwnode);
-	if (IS_ERR(usbss->codec))
-		return dev_err_probe(dev, PTR_ERR(usbss->codec),
-				     "failed to acquire codec mode-switch\n");
+	usbss->charger_only = dev->of_node &&
+		of_device_is_compatible(dev->of_node, "qcom,wcd939x-i2c");
+	if (!usbss->charger_only) {
+		usbss->codec = fwnode_typec_mux_get(dev->fwnode);
+		if (IS_ERR(usbss->codec))
+			return dev_err_probe(dev, PTR_ERR(usbss->codec),
+					     "failed to acquire codec mode-switch\n");
 
-	usbss->codec_switch = fwnode_typec_switch_get(dev->fwnode);
-	if (IS_ERR(usbss->codec_switch)) {
-		ret = dev_err_probe(dev, PTR_ERR(usbss->codec_switch),
-				    "failed to acquire codec orientation-switch\n");
-		goto err_mux_put;
+		usbss->codec_switch = fwnode_typec_switch_get(dev->fwnode);
+		if (IS_ERR(usbss->codec_switch)) {
+			ret = dev_err_probe(dev, PTR_ERR(usbss->codec_switch),
+					    "failed to acquire codec orientation-switch\n");
+			goto err_mux_put;
+		}
 	}
 
 	usbss->mode = TYPEC_STATE_SAFE;
@@ -700,6 +767,17 @@ static int wcd939x_usbss_probe(struct i2c_client *client)
 	if (ret)
 		goto err_regulator_disable;
 
+	if (usbss->charger_only) {
+#if IS_ENABLED(CONFIG_OPLUS_AUDIO_SWITCH_GLINK)
+		usbss->chg_nb.notifier_call = wcd939x_usbss_chg_event;
+		ret = register_chg_glink_notifier(&usbss->chg_nb);
+		if (ret)
+			goto err_regulator_disable;
+#endif
+		i2c_set_clientdata(client, usbss);
+		return 0;
+	}
+
 	sw_desc.drvdata = usbss;
 	sw_desc.fwnode = dev_fwnode(dev);
 	sw_desc.set = wcd939x_usbss_switch_set;
@@ -731,10 +809,12 @@ err_regulator_disable:
 	regulator_disable(usbss->vdd_supply);
 
 err_mux_switch:
-	typec_switch_put(usbss->codec_switch);
+	if (!usbss->charger_only)
+		typec_switch_put(usbss->codec_switch);
 
 err_mux_put:
-	typec_mux_put(usbss->codec);
+	if (!usbss->charger_only)
+		typec_mux_put(usbss->codec);
 
 	return ret;
 }
@@ -743,13 +823,21 @@ static void wcd939x_usbss_remove(struct i2c_client *client)
 {
 	struct wcd939x_usbss *usbss = i2c_get_clientdata(client);
 
-	typec_mux_unregister(usbss->mux);
-	typec_switch_unregister(usbss->sw);
+#if IS_ENABLED(CONFIG_OPLUS_AUDIO_SWITCH_GLINK)
+	if (usbss->charger_only)
+		unregister_chg_glink_notifier(&usbss->chg_nb);
+#endif
+	if (!usbss->charger_only) {
+		typec_mux_unregister(usbss->mux);
+		typec_switch_unregister(usbss->sw);
+	}
 
 	regulator_disable(usbss->vdd_supply);
 
-	typec_switch_put(usbss->codec_switch);
-	typec_mux_put(usbss->codec);
+	if (!usbss->charger_only) {
+		typec_switch_put(usbss->codec_switch);
+		typec_mux_put(usbss->codec);
+	}
 }
 
 static const struct i2c_device_id wcd939x_usbss_table[] = {
@@ -760,6 +848,7 @@ MODULE_DEVICE_TABLE(i2c, wcd939x_usbss_table);
 
 static const struct of_device_id wcd939x_usbss_of_table[] = {
 	{ .compatible = "qcom,wcd9390-usbss" },
+	{ .compatible = "qcom,wcd939x-i2c" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, wcd939x_usbss_of_table);

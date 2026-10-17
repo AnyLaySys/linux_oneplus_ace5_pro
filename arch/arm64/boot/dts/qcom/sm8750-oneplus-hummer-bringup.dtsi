@@ -24,7 +24,7 @@
 };
 
 &{/smp2p-adsp} {
-	status = "disabled";
+	status = "okay";
 };
 
 &{/smp2p-cdsp} {
@@ -132,15 +132,15 @@
 };
 
 &{/soc@0/codec@6ac0000} {
-	status = "disabled";
+	status = "okay";
 };
 
 &{/soc@0/soundwire@6ad0000} {
-	status = "disabled";
+	status = "okay";
 };
 
 &{/soc@0/codec@6ae0000} {
-	status = "disabled";
+	status = "okay";
 };
 
 &{/soc@0/codec@6b00000} {
@@ -164,15 +164,15 @@
 };
 
 &{/soc@0/soundwire@7630000} {
-	status = "disabled";
+	status = "okay";
 };
 
 &{/soc@0/codec@7660000} {
-	status = "disabled";
+	status = "okay";
 };
 
 &{/soc@0/pinctrl@7760000} {
-	status = "disabled";
+	status = "okay";
 };
 
 &{/soc@0/mmc@8804000} {
@@ -639,7 +639,57 @@
 };
 
 &tlmm {
-	gpio-reserved-ranges = <0 16>, <17 7>, <28 20>, <52 14>, <68 34>, <105 56>, <163 52>;
+	gpio-reserved-ranges = <0 2>, <3 13>, <17 7>, <28 16>, <46 2>, <52 14>, <68 4>, <74 27>, <105 16>, <125 36>, <165 41>, <208 7>;
+
+	mi2s1_sck_active: mi2s1-sck-active-state {
+		pins = "gpio121";
+		function = "i2s1_sck";
+		drive-strength = <8>;
+		bias-disable;
+	};
+
+	mi2s1_ws_active: mi2s1-ws-active-state {
+		pins = "gpio123";
+		function = "i2s1_ws";
+		drive-strength = <8>;
+		bias-disable;
+	};
+
+	mi2s1_sd0_active: mi2s1-sd0-active-state {
+		pins = "gpio122";
+		function = "i2s1_data0";
+		drive-strength = <8>;
+		bias-disable;
+	};
+
+	mi2s1_sd1_active: mi2s1-sd1-active-state {
+		pins = "gpio124";
+		function = "i2s1_data1";
+		drive-strength = <8>;
+		bias-disable;
+	};
+
+	wcd939x_reset_active: wcd939x-reset-active-state {
+		pins = "gpio101";
+		function = "gpio";
+		drive-strength = <16>;
+		bias-disable;
+		output-high;
+	};
+
+	sia91xx_gpio_L: sia91xx-gpio-left-state {
+		pins = "gpio2";
+		function = "gpio";
+		drive-strength = <6>;
+		bias-disable;
+	};
+
+	sia91xx_gpio_R: sia91xx-gpio-right-state {
+		pins = "gpio164";
+		function = "gpio";
+		drive-strength = <6>;
+		bias-disable;
+	};
 
 	touch_reset_default: touch-reset-default-state {
 		pins = "gpio161";
@@ -686,7 +736,21 @@
 	status = "okay";
 };
 
+&i2c3 {
+	status = "okay";
+
+	wcd939x_i2c@e {
+		compatible = "qcom,wcd939x-i2c";
+		reg = <0xe>;
+		vdd-supply = <&vreg_l15b_1p8>;
+	};
+};
+
 &vreg_l4b_1p8 {
+	status = "okay";
+};
+
+&vreg_l15b_1p8 {
 	status = "okay";
 };
 
@@ -727,7 +791,7 @@
 			"VDDD_AON_0P9:s5f", "VDDA_RFA_1P9:s3g",
 			"VDDA_RFA_1P3:s7i", "VDDA_RFA_0P9:s5f",
 			"VDDD_WLMX_0P9:s4d", "VDDD_WLCX_0P9:s5f",
-			"VDDD_BTCX_0P9:s5f", "VDDD_BTCMX_0P85:s5f",
+			"VDDD_BTCX_0P9:s5f", "VDDD_BTCMX_0P9:s5f",
 			"VDDA_PCIE_1P2:s7i", "VDDA_PCIE_0P9:s7i";
 		pinctrl-names = "default";
 		pinctrl-0 = <&wlan_en_default &bt_en_default>;
@@ -780,10 +844,64 @@
 
 &i2c_hub_1 {
 	status = "okay";
+};
 
-	battery@55 {
-		compatible = "ti,bq28z610";
-		reg = <0x55>;
+&i2c_hub_4 {
+	status = "okay";
+	qcom,clk-freq-out = <400000>;
+
+	sipa_i2c_L: sipa91xx_i2c@6c {
+		compatible = "si,sia91xx-i2c";
+		reg = <0x6c>;
+		#sound-dai-cells = <0>;
+		si,sipa-dev = <&sia91xx_L>;
+		sound-name-prefix = "SpkrLeft";
+	};
+
+	sipa_i2c_R: sipa91xx_i2c@6d {
+		compatible = "si,sia91xx-i2c";
+		reg = <0x6d>;
+		#sound-dai-cells = <0>;
+		si,sipa-dev = <&sia91xx_R>;
+		sound-name-prefix = "SpkrRight";
+	};
+};
+
+&soc {
+	battery_charger: battery-charger {};
+};
+
+&soc {
+	sia91xx_L: sia91xx@L {
+		compatible = "si,sia91xx";
+		si,si_pa_type = "sia9177";
+		si,si_pa_disable_pin = <0>;
+		si,si_pa_reset = <&tlmm 2 0>;
+		pinctrl-names = "si_pa_gpio";
+		pinctrl-0 = <&sia91xx_gpio_L>;
+		channel_num = <0>;
+		sipa_min_range = <5300>;
+		sipa_max_range = <7500>;
+		sipa_default_mohm = <6000>;
+		sipa_min_freq = <100>;
+		sipa_max_freq = <2000>;
+		is_use_freq = <1>;
+	};
+
+	sia91xx_R: sia91xx@R {
+		compatible = "si,sia91xx";
+		si,si_pa_type = "sia9177";
+		si,si_pa_disable_pin = <0>;
+		si,si_pa_reset = <&tlmm 164 0>;
+		pinctrl-names = "si_pa_gpio";
+		pinctrl-0 = <&sia91xx_gpio_R>;
+		channel_num = <1>;
+		sipa_min_range = <5300>;
+		sipa_max_range = <7500>;
+		sipa_default_mohm = <6000>;
+		sipa_min_freq = <100>;
+		sipa_max_freq = <2000>;
+		is_use_freq = <1>;
 	};
 };
 
@@ -793,7 +911,9 @@
 
 	bluetooth {
 		compatible = "qcom,wcn7850-bt";
-		max-speed = <3200000>;
+		max-speed = <8000000>;
+		local-bd-address = [00 51 52 02 bf 02];
+		firmware-name = "brhbtnv20", "brhbtfw20.tlv";
 	};
 };
 
@@ -927,5 +1047,78 @@
 				};
 			};
 		};
+	};
+};
+
+#include "oplus_chg/oplus-chg-24811.dtsi"
+
+&{/} {
+	wcd939x: audio-codec {
+		compatible = "qcom,wcd9395-codec", "qcom,wcd9390-codec";
+		pinctrl-names = "default";
+		pinctrl-0 = <&wcd939x_reset_active>;
+		qcom,micbias1-microvolt = <1800000>;
+		qcom,micbias2-microvolt = <1800000>;
+		qcom,micbias3-microvolt = <1800000>;
+		qcom,micbias4-microvolt = <1800000>;
+		qcom,rx-device = <&wcd_rx>;
+		qcom,tx-device = <&wcd_tx>;
+		reset-gpios = <&tlmm 101 GPIO_ACTIVE_LOW>;
+		vdd-buck-supply = <&vreg_l15b_1p8>;
+		vdd-rxtx-supply = <&vreg_l15b_1p8>;
+		vdd-io-supply = <&vreg_l15b_1p8>;
+		vdd-mic-bias-supply = <&vreg_bob1>;
+		vdd-px-supply = <&vreg_l2i_1p2>;
+		#sound-dai-cells = <1>;
+	};
+
+	sound {
+		compatible = "qcom,sm8750-sndcard", "qcom,sm8450-sndcard";
+		model = "OnePlus Ace 5 Pro";
+		clocks = <&q6prmcc LPASS_CLK_ID_SEC_MI2S_IBIT LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+		clock-names = "mi2s";
+		pinctrl-names = "default";
+		pinctrl-0 = <&mi2s1_sck_active &mi2s1_ws_active &mi2s1_sd0_active &mi2s1_sd1_active>;
+		audio-routing = "IN1_HPHL", "HPHL_OUT",
+				"IN2_HPHR", "HPHR_OUT",
+				"AMIC2", "MIC BIAS2",
+				"TX SWR_INPUT1", "ADC2_OUTPUT";
+
+		wcd-playback-dai-link {
+			link-name = "WCD Playback";
+			codec { sound-dai = <&wcd939x 0>, <&swr1 0>, <&lpass_rxmacro 0>; };
+			cpu { sound-dai = <&q6apmbedai RX_CODEC_DMA_RX_0>; };
+			platform { sound-dai = <&q6apm>; };
+		};
+
+		wcd-capture-dai-link {
+			link-name = "WCD Capture";
+			codec { sound-dai = <&wcd939x 1>, <&swr2 0>, <&lpass_txmacro 0>; };
+			cpu { sound-dai = <&q6apmbedai TX_CODEC_DMA_TX_3>; };
+			platform { sound-dai = <&q6apm>; };
+		};
+
+		speaker-dai-link {
+			link-name = "Secondary MI2S Playback";
+			codec { sound-dai = <&sipa_i2c_L>, <&sipa_i2c_R>; };
+			cpu { sound-dai = <&q6apmbedai SECONDARY_MI2S_RX>; };
+			platform { sound-dai = <&q6apm>; };
+		};
+	};
+};
+
+&swr1 {
+	wcd_rx: codec@0,4 {
+		compatible = "sdw20217010e00";
+		reg = <0 4>;
+		qcom,rx-port-mapping = <1 2 3 4 5 9>;
+	};
+};
+
+&swr2 {
+	wcd_tx: codec@0,3 {
+		compatible = "sdw20217010e00";
+		reg = <0 3>;
+		qcom,tx-port-mapping = <2 2 3 4>;
 	};
 };

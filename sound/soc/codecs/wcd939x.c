@@ -3553,10 +3553,8 @@ static int wcd939x_probe(struct platform_device *pdev)
 	wcd939x->common.max_bias = 4;
 
 	ret = wcd939x_populate_dt_data(wcd939x, dev);
-	if (ret) {
-		dev_err(dev, "%s: Fail to obtain platform data\n", __func__);
-		return -EINVAL;
-	}
+	if (ret)
+		return ret;
 
 	ret = wcd939x_add_typec(wcd939x, dev);
 	if (ret)

@@ -14,6 +14,7 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/of_address.h>
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/slab.h>
@@ -453,6 +454,19 @@ out:
 
 	return desc;
 }
+
+int of_get_named_gpio(const struct device_node *np, const char *propname,
+		      int index)
+{
+	struct gpio_desc *desc;
+
+	desc = of_get_named_gpiod_flags(np, propname, index, NULL);
+	if (IS_ERR(desc))
+		return PTR_ERR(desc);
+
+	return desc_to_gpio(desc);
+}
+EXPORT_SYMBOL_GPL(of_get_named_gpio);
 
 /* Converts gpio_lookup_flags into bitmask of GPIO_* values */
 static unsigned long of_convert_gpio_flags(enum of_gpio_flags flags)
