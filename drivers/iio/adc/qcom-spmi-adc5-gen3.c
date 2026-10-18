@@ -91,7 +91,14 @@ int adc5_gen3_write(struct adc5_device_data *adc, unsigned int sdam_index,
 }
 EXPORT_SYMBOL_NS_GPL(adc5_gen3_write, "QCOM_SPMI_ADC5_GEN3");
 
-static int adc5_gen3_read_voltage_data(struct adc5_chip *adc, u16 *data)
+static const struct adc5_data adc5_gen4_scale_data = {
+	.full_scale_code_volt = 0x70e4,
+	.full_scale_code_cur = 0x4e20,
+	.full_scale_code_raw = 0xffff,
+};
+
+static int adc5_gen3_read_voltage_data(struct adc5_chip *adc,
+				     struct adc5_channel_common_prop *prop, u16 *data)
 {
 	u8 rslt[2];
 	int ret;
@@ -103,7 +110,7 @@ static int adc5_gen3_read_voltage_data(struct adc5_chip *adc, u16 *data)
 
 	*data = get_unaligned_le16(rslt);
 
-	if (*data == ADC5_USR_DATA_CHECK) {
+	if (*data == ADC5_USR_DATA_CHECK && prop->data != &adc5_gen4_scale_data) {
 		dev_err(adc->dev, "Invalid data:%#x\n", *data);
 		return -EINVAL;
 	}
@@ -273,7 +280,7 @@ static int adc5_gen3_do_conversion(struct adc5_chip *adc,
 		return -ETIMEDOUT;
 	}
 
-	ret = adc5_gen3_read_voltage_data(adc, data_volt);
+	ret = adc5_gen3_read_voltage_data(adc, prop, data_volt);
 	if (ret)
 		return ret;
 
@@ -375,7 +382,7 @@ static int adc5_gen3_read_raw(struct iio_dev *indio_dev,
 			return ret;
 
 		ret = qcom_adc5_hw_scale(prop->scale_fn_type, prop->prescale,
-					 adc->data, adc_code_volt, val);
+					 prop->data, adc_code_volt, val);
 		if (ret)
 			return ret;
 
@@ -490,6 +497,8 @@ static int adc5_gen3_get_fw_channel_data(struct adc5_chip *adc,
 
 	prop->common_props.channel = chan;
 	prop->common_props.sid = sid;
+	prop->common_props.data = fwnode_property_read_bool(fwnode, "qcom,adc5-gen4") ?
+		&adc5_gen4_scale_data : adc->data;
 
 	if (!adc->data->adc_chans[chan].info_mask)
 		return dev_err_probe(dev, -EINVAL, "Channel %#x not supported\n", chan);
@@ -498,7 +507,8 @@ static int adc5_gen3_get_fw_channel_data(struct adc5_chip *adc,
 	fwnode_property_read_string(fwnode, "label", &channel_name);
 	prop->common_props.label = channel_name;
 
-	value = data->decimation[ADC5_DECIMATION_DEFAULT];
+	value = data->decimation[prop->common_props.data == &adc5_gen4_scale_data ?
+				 1 : ADC5_DECIMATION_DEFAULT];
 	fwnode_property_read_u32(fwnode, "qcom,decimation", &value);
 	ret = qcom_adc5_decimation_from_dt(value, data->decimation);
 	if (ret < 0)
@@ -534,6 +544,12 @@ static int adc5_gen3_get_fw_channel_data(struct adc5_chip *adc,
 				     chan, value);
 	prop->common_props.avg_samples = ret;
 
+	value = data->adc_chans[chan].scale_fn_type;
+	fwnode_property_read_u32(fwnode, "qcom,scale-fn-type", &value);
+	if (value < SCALE_HW_CALIB_DEFAULT || value >= SCALE_HW_CALIB_INVALID)
+		return -EINVAL;
+	prop->common_props.scale_fn_type = value;
+
 	if (fwnode_property_read_bool(fwnode, "qcom,ratiometric"))
 		prop->common_props.cal_method = ADC5_RATIOMETRIC_CAL;
 	else
@@ -554,6 +570,7 @@ static int adc5_gen3_get_fw_channel_data(struct adc5_chip *adc,
 
 static const struct adc5_data adc5_gen3_data_pmic = {
 	.full_scale_code_volt = 0x70e4,
+	.full_scale_code_raw = RATIO_MAX_ADC7,
 	.adc_chans = adc5_gen3_chans_pmic,
 	.info = &adc5_gen3_info,
 	.decimation = (unsigned int [ADC5_DECIMATION_SAMPLES_MAX])
@@ -609,11 +626,10 @@ static int adc5_get_fw_data(struct adc5_chip *adc)
 
 		chan_props->chip = adc;
 		adc_chan = &adc->data->adc_chans[chan_props->common_props.channel];
-		chan_props->common_props.scale_fn_type = adc_chan->scale_fn_type;
-
 		iio_chan->channel = ADC5_GEN3_V_CHAN(chan_props->common_props);
 		iio_chan->info_mask_separate = adc_chan->info_mask;
-		iio_chan->type = adc_chan->type;
+		iio_chan->type = chan_props->common_props.scale_fn_type == SCALE_HW_CALIB_DEFAULT ?
+			IIO_VOLTAGE : adc_chan->type;
 		iio_chan->address = index;
 		iio_chan->indexed = 1;
 		iio_chan++;
@@ -725,7 +741,7 @@ int adc5_gen3_get_scaled_reading(struct device *dev,
 
 	return qcom_adc5_hw_scale(common_props->scale_fn_type,
 				  common_props->prescale,
-				  adc->data, adc_code_volt, val);
+				  common_props->data, adc_code_volt, val);
 }
 EXPORT_SYMBOL_NS_GPL(adc5_gen3_get_scaled_reading, "QCOM_SPMI_ADC5_GEN3");
 
@@ -733,12 +749,9 @@ int adc5_gen3_therm_code_to_temp(struct device *dev,
 				 struct adc5_channel_common_prop *common_props,
 				 u16 code, int *val)
 {
-	struct iio_dev *indio_dev = dev_get_drvdata(dev->parent);
-	struct adc5_chip *adc = iio_priv(indio_dev);
-
 	return qcom_adc5_hw_scale(common_props->scale_fn_type,
 				  common_props->prescale,
-				  adc->data, code, val);
+				  common_props->data, code, val);
 }
 EXPORT_SYMBOL_NS_GPL(adc5_gen3_therm_code_to_temp, "QCOM_SPMI_ADC5_GEN3");
 

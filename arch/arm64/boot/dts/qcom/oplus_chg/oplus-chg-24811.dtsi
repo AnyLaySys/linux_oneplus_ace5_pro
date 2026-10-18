@@ -810,26 +810,22 @@
 	usbtemp_l_gpio_default: usbtemp_l_gpio_default {
 		pins = "gpio6"; //GPIO 6
 		function = "normal"; //normal
-		bias-high-impedance; //DISABLE GPIO5 for ADC
 		bias-disable;
 	};
 	usbtemp_r_gpio_default: usbtemp_r_gpio_default {
 		pins = "gpio18"; //GPIO 18
 		function = "normal"; //normal
-		bias-high-impedance; //DISABLE GPIO10 for ADC
 		bias-disable;
 	};
 	subboard_temp_gpio_default: subboard_temp_gpio_default {
 		pins = "gpio12"; //GPIO 12
 		function = "normal"; //normal
-		bias-high-impedance; //DISABLE GPIO6 for ADC
 		bias-disable;
 	};
 	svooc_mos_btb_therm {
 		svooc_mos_btb_therm_default: svooc_mos_btb_therm_default {
 			pins = "gpio15";
 			function = "normal"; //normal
-			bias-high-impedance;
 			bias-disable;
 		};
 	};
@@ -837,8 +833,7 @@
 };
 
 &pmk8550_vadc {
-	pinctrl-0 = <&usbtemp_l_gpio_default &usbtemp_r_gpio_default
-		     &subboard_temp_gpio_default &svooc_mos_btb_therm_default>;
+	pinctrl-0 = <&subboard_temp_gpio_default &svooc_mos_btb_therm_default>;
 	pinctrl-names = "default";
 	pmih010x_vph_pwr {
 		reg = <PMIH010X_ADC5_GEN4_VPH_PWR>;

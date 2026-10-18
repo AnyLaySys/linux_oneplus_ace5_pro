@@ -1057,10 +1057,10 @@
 		compatible = "qcom,wcd9395-codec", "qcom,wcd9390-codec";
 		pinctrl-names = "default";
 		pinctrl-0 = <&wcd939x_reset_active>;
-		qcom,micbias1-microvolt = <1800000>;
-		qcom,micbias2-microvolt = <1800000>;
-		qcom,micbias3-microvolt = <1800000>;
-		qcom,micbias4-microvolt = <1800000>;
+		qcom,micbias1-microvolt = <2700000>;
+		qcom,micbias2-microvolt = <2700000>;
+		qcom,micbias3-microvolt = <2700000>;
+		qcom,micbias4-microvolt = <2700000>;
 		qcom,rx-device = <&wcd_rx>;
 		qcom,tx-device = <&wcd_tx>;
 		reset-gpios = <&tlmm 101 GPIO_ACTIVE_LOW>;
@@ -1082,7 +1082,12 @@
 		audio-routing = "IN1_HPHL", "HPHL_OUT",
 				"IN2_HPHR", "HPHR_OUT",
 				"AMIC2", "MIC BIAS2",
-				"TX SWR_INPUT1", "ADC2_OUTPUT";
+				"AMIC1", "MIC BIAS1",
+				"AMIC3", "MIC BIAS4",
+				"AMIC5", "MIC BIAS1",
+				"TX SWR_INPUT0", "ADC1_OUTPUT",
+				"TX SWR_INPUT1", "ADC2_OUTPUT",
+				"TX SWR_INPUT3", "ADC4_OUTPUT";
 
 		wcd-playback-dai-link {
 			link-name = "WCD Playback";

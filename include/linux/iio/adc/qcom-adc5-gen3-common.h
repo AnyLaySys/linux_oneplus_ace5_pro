@@ -158,6 +158,7 @@ struct adc5_device_data {
  *	physical units desired by the client for the channel.
  */
 struct adc5_channel_common_prop {
+	const struct adc5_data *data;
 	unsigned int channel;
 	enum adc5_cal_method cal_method;
 	unsigned int decimation;

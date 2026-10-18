@@ -205,7 +205,7 @@
 			no-map;
 		};
 
-		gpu_microcode_region@9b09a000 {
+		gpu_micro_code_mem: gpu_microcode_region@9b09a000 {
 			reg = <0x0 0x9b09a000 0x0 0x2000>;
 			no-map;
 		};
@@ -419,3 +419,11 @@
 };
 
 #include "sm8750-oneplus-hummer-bringup.dtsi"
+
+&gpu {
+	status = "okay";
+};
+
+&gpu_zap_shader {
+	firmware-name = "qcom/sm8750/oneplus/hummer/gen80000_zap.mbn";
+};
