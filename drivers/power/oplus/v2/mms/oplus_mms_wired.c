@@ -292,6 +292,7 @@ struct oplus_mms_wired {
 	bool otg_online_status;
 	struct work_struct wls_upgrading_work;
 	bool pd_completed;
+	struct mutex otg_lock;
 	oplus_lpd_info lpd_info;
 	struct delayed_work lpd_info_update_work;
 	struct oplus_lpd_spec_config lpd_spec;
@@ -3670,45 +3671,36 @@ static bool oplus_wls_is_present(struct oplus_mms_wired *chip)
 }
 
 #define OTG_BOOST_VOL_THRESHOLD 5000
-static void oplus_wired_otg_enable_handler_work(struct work_struct *work)
+static int oplus_wired_set_otg_enable(struct oplus_mms_wired *chip, bool enable)
 {
-	struct delayed_work *dwork = to_delayed_work(work);
-	struct oplus_mms_wired *chip =
-		container_of(dwork, struct oplus_mms_wired, otg_enable_handler_work);
 	struct mms_msg *msg;
-	bool enable;
 	enum typec_data_role role;
 	int rc;
 	int vbatt = 0;
 	struct oplus_usbtemp_spec_config *spec;
 
 	if (!chip)
-		return;
+		return -EINVAL;
 	spec = &chip->usbtemp_spec;
 
-	rc = oplus_chg_ic_func(chip->buck_ic,
-			       OPLUS_IC_FUNC_GET_OTG_ENABLE, &enable);
-	if (rc < 0)
-		enable = false;
 	enable &= !chip->otg_disbale_status;
 	chip->otg_online_status = enable;
-	if (chip->wls_upgrading) {
-		return;
-	}
+	if (chip->wls_upgrading)
+		return 0;
 	if (chip->support_wlsotg_non_coexistence) {
 		if (enable && oplus_wls_is_present(chip)) {
 			chip->otg_enable_pending = true;
 			oplus_wired_set_usb_status(chip, OTG_ENABLE_PENDING);
 			if (is_batt_psy_available(chip))
 				power_supply_changed(chip->batt_psy);
-			return;
+			return 0;
 		}
 		if (!enable && chip->otg_enable_pending) {
 			chip->otg_enable_pending = false;
 			oplus_wired_clear_usb_status(chip, OTG_ENABLE_PENDING);
 			if (is_batt_psy_available(chip))
 				power_supply_changed(chip->batt_psy);
-			return;
+			return 0;
 		}
 	}
 
@@ -3723,9 +3715,8 @@ static void oplus_wired_otg_enable_handler_work(struct work_struct *work)
 
 	if (enable) {
 		msg = oplus_mms_alloc_msg(MSG_TYPE_ITEM, MSG_PRIO_MEDIUM, WIRED_ITEM_PRE_OTG_ENABLE);
-		if (msg == NULL) {
-			return;
-		}
+		if (msg == NULL)
+			return -ENOMEM;
 		rc = oplus_mms_publish_msg_sync(chip->wired_topic, msg);
 		if (rc < 0) {
 			kfree(msg);
@@ -3750,22 +3741,20 @@ static void oplus_wired_otg_enable_handler_work(struct work_struct *work)
 	}
 	rc = oplus_chg_ic_func(chip->buck_ic,
 			       OPLUS_IC_FUNC_OTG_BOOST_ENABLE, enable);
-	if (rc < 0) {
-		return;
-	}
+	if (rc < 0)
+		return rc;
 	if (!enable && role == TYPEC_DEVICE) {
 		rc = oplus_chg_ic_func(chip->buck_ic,
 				       OPLUS_IC_FUNC_DISABLE_VBUS, false, true);
 	}
 
 	if (chip->otg_enable == enable)
-		return;
+		return 0;
 	chip->otg_enable = enable;
 	msg = oplus_mms_alloc_msg(MSG_TYPE_ITEM, MSG_PRIO_MEDIUM,
 				  WIRED_ITEM_OTG_ENABLE);
-	if (msg == NULL) {
-		return;
-	}
+	if (msg == NULL)
+		return 0;
 	rc = oplus_mms_publish_msg(chip->wired_topic, msg);
 	if (rc < 0) {
 		kfree(msg);
@@ -3774,8 +3763,41 @@ static void oplus_wired_otg_enable_handler_work(struct work_struct *work)
 	if (is_vooc_chg_auto_mode_votable_available(chip))
 		vote(chip->vooc_chg_auto_mode_votable, OTG_ONLINE_VOTER,
 		     enable, enable, false);
-	else
-		;
+
+	return 0;
+}
+
+int oplus_wired_usb_role_changed(bool host)
+{
+	struct oplus_mms_wired *chip = READ_ONCE(g_mms_wired);
+	int rc;
+
+	if (!chip)
+		return -EPROBE_DEFER;
+
+	mutex_lock(&chip->otg_lock);
+	rc = oplus_wired_set_otg_enable(chip, host);
+	mutex_unlock(&chip->otg_lock);
+	return rc;
+}
+EXPORT_SYMBOL_GPL(oplus_wired_usb_role_changed);
+
+static void oplus_wired_otg_enable_handler_work(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct oplus_mms_wired *chip =
+		container_of(dwork, struct oplus_mms_wired, otg_enable_handler_work);
+	bool enable;
+	int rc;
+
+	rc = oplus_chg_ic_func(chip->buck_ic, OPLUS_IC_FUNC_GET_OTG_ENABLE,
+			       &enable);
+	if (rc < 0)
+		enable = false;
+
+	mutex_lock(&chip->otg_lock);
+	oplus_wired_set_otg_enable(chip, enable);
+	mutex_unlock(&chip->otg_lock);
 }
 
 static void oplus_wired_lpd_info_update_work(struct work_struct *work)
@@ -6616,6 +6638,7 @@ static void oplus_mms_wired_value_init(struct oplus_mms_wired *chip)
 	chip->cpa_support = oplus_cpa_support();
 	chip->set_icl_done = false;
 	chip->gauge_not_ready = false;
+	mutex_init(&chip->otg_lock);
 
 	schedule_delayed_work(&chip->mms_wired_init_work, 0);
 

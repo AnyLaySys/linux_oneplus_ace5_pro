@@ -97,6 +97,8 @@ static const int oplus_prop_map[OPLUS_PROPERTY_MAX];
 struct battery_chg_dev *g_bcdev = NULL;
 static int oplus_get_vchg_trig_status(void);
 static bool oplus_vchg_trig_is_support(void);
+static int oplus_chg_8350_set_typec_mode(struct oplus_chg_ic_dev *ic_dev,
+						 enum oplus_chg_typec_port_role_type mode);
 extern void oplus_usb_set_none_role(void);
 static int oplus_get_voocphy_enable(struct battery_chg_dev *bcdev);
 static int oplus_voocphy_enable(struct battery_chg_dev *bcdev, bool enable);
@@ -7901,6 +7903,14 @@ static int oplus_chg_8350_otg_boost_enable(struct oplus_chg_ic_dev *ic_dev, bool
 	}
 
 	bcdev = oplus_chg_ic_get_drvdata(ic_dev);
+	rc = oplus_otg_ap_enable(bcdev, en);
+	if (rc)
+		return rc;
+	rc = oplus_chg_8350_set_typec_mode(ic_dev,
+					  en ? TYPEC_PORT_ROLE_SRC : TYPEC_PORT_ROLE_SNK);
+	if (rc)
+		return rc;
+	bcdev->otg_online = en;
 
 	if (bcdev->otg_boost_src == OTG_BOOST_SOURCE_EXTERNAL) {
 		if (en) {

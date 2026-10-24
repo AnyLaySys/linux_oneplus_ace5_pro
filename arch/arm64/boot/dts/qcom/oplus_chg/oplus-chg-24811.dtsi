@@ -523,6 +523,7 @@
 };
 
 &battery_charger {
+	qcom,otg_boost_src = <0>;
 	//for oplus chg framework:
 	oplus,chg_ops = "plat-pmic";
 	qcom,pmic_ftm_vph = "/sys/bus/spmi/drivers/pmic-spmi/0-00/c42d000.qcom,spmi:qcom,pmk8550@0:vadc@9000/iio:device0/in_voltage_pmih010x_vph_pwr_input";
