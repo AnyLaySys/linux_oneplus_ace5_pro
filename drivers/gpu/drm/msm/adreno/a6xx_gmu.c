@@ -1652,7 +1652,7 @@ static int a6xx_gmu_rpmh_bw_votes_init(struct adreno_gpu *adreno_gpu,
 				u32 perfmode = 0;
 
 				/* GMU on A6xx votes perfmode on all valid bandwidth */
-				if (!adreno_is_a7xx(adreno_gpu) ||
+				if ((!adreno_is_a7xx(adreno_gpu) && !adreno_is_a8xx(adreno_gpu)) ||
 				    (bcm->perfmode_bw && bw >= bcm->perfmode_bw))
 					perfmode = bcm->perfmode;
 

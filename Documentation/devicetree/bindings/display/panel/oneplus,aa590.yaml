@@ -1,0 +1,40 @@
+$id: http://devicetree.org/schemas/display/panel/oneplus,aa590.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: OnePlus AA590 1264x2780 AMOLED panel
+
+maintainers:
+  - Sui-KP <Sui-KP@outlook.com>
+
+allOf:
+  - $ref: panel-common.yaml#
+
+properties:
+  compatible:
+    const: oneplus,aa590
+
+  reg:
+    maxItems: 1
+
+  reset-gpios:
+    maxItems: 1
+
+  enable-gpios:
+    maxItems: 1
+
+  vddio-supply: true
+
+  vci-supply: true
+
+  port: true
+
+required:
+  - compatible
+  - reg
+  - reset-gpios
+  - enable-gpios
+  - vddio-supply
+  - vci-supply
+  - port
+
+unevaluatedProperties: false

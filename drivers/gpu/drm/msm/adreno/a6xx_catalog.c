@@ -1918,7 +1918,6 @@ static const struct adreno_reglist_pipe a830_dyn_pwrup_reglist_regs[] = {
 	{ REG_A8XX_VFD_CB_BUSY_REQ_CNT, 0, BIT(PIPE_BV) | BIT(PIPE_BR) },
 	{ REG_A8XX_VFD_CB_LP_REQ_CNT, 0, BIT(PIPE_BV) | BIT(PIPE_BR) },
 	{ REG_A7XX_VFD_DBG_ECO_CNTL, 0, BIT(PIPE_BR) | BIT(PIPE_BV) },
-	{ },
 };
 DECLARE_ADRENO_REGLIST_PIPE_LIST(a830_dyn_pwrup_reglist);
 static const struct adreno_reglist_pipe x285_nonctxt_regs[] = {
@@ -2625,6 +2624,18 @@ static const struct adreno_reglist_pipe a840_dyn_pwrup_reglist_regs[] = {
 };
 DECLARE_ADRENO_REGLIST_PIPE_LIST(a840_dyn_pwrup_reglist);
 
+static const struct a6xx_bcm a8xx_bcms[] = {
+	{ .name = "SH0", .buswidth = 16 },
+	{ .name = "MC0", .buswidth = 4 },
+	{
+		.name = "ACV",
+		.fixed = true,
+		.perfmode = BIT(2),
+		.perfmode_bw = 10687500,
+	},
+	{ },
+};
+
 static const struct adreno_info a8xx_gpus[] = {
 	{
 		.chip_ids = ADRENO_CHIP_IDS(0x44050001),
@@ -2650,17 +2661,7 @@ static const struct adreno_info a8xx_gpus[] = {
 			.gbif_cx = a840_gbif,
 			.max_slices = 3,
 			.gmu_chipid = 0x8000100,
-			.bcms = (const struct a6xx_bcm[]) {
-				{ .name = "SH0", .buswidth = 16 },
-				{ .name = "MC0", .buswidth = 4 },
-				{
-					.name = "ACV",
-					.fixed = true,
-					.perfmode = BIT(2),
-					.perfmode_bw = 10687500,
-				},
-				{ },
-			},
+			.bcms = a8xx_bcms,
 		},
 		.preempt_record_size = 13536 * SZ_1K,
 		.speedbins = ADRENO_SPEEDBINS(
@@ -2736,17 +2737,7 @@ static const struct adreno_info a8xx_gpus[] = {
 			.gbif_cx = a840_gbif,
 			.max_slices = 3,
 			.gmu_chipid = 0x8020100,
-			.bcms = (const struct a6xx_bcm[]) {
-				{ .name = "SH0", .buswidth = 16 },
-				{ .name = "MC0", .buswidth = 4 },
-				{
-					.name = "ACV",
-					.fixed = true,
-					.perfmode = BIT(2),
-					.perfmode_bw = 10687500,
-				},
-				{ /* sentinel */ },
-			},
+			.bcms = a8xx_bcms,
 		},
 		.preempt_record_size = 19708 * SZ_1K,
 		.speedbins = ADRENO_SPEEDBINS(
@@ -2779,17 +2770,7 @@ static const struct adreno_info a8xx_gpus[] = {
 			.gbif_cx = a840_gbif,
 			.max_slices = 1,
 			.gmu_chipid = 0x8030000,
-			.bcms = (const struct a6xx_bcm[]) {
-				{ .name = "SH0", .buswidth = 16 },
-				{ .name = "MC0", .buswidth = 4 },
-				{
-					.name = "ACV",
-					.fixed = true,
-					.perfmode = BIT(2),
-					.perfmode_bw = 10687500,
-				},
-				{ /* sentinel */ },
-			},
+			.bcms = a8xx_bcms,
 		},
 		.preempt_record_size = 4558 * SZ_1K,
 		.speedbins = ADRENO_SPEEDBINS(

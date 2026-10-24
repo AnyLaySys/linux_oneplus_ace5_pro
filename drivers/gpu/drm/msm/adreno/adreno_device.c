@@ -282,7 +282,7 @@ static void adreno_remove(struct platform_device *pdev)
 {
 	struct msm_drm_private *priv = platform_get_drvdata(pdev);
 
-	if (priv->kms_init)
+	if (!priv || priv->kms_init)
 		component_del(&pdev->dev, &a3xx_ops);
 	else
 		msm_gpu_remove(pdev, &a3xx_ops);

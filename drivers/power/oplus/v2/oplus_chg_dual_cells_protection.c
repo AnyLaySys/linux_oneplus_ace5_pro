@@ -1104,15 +1104,13 @@ static int oplus_chg_dual_cells_protection_probe(struct platform_device *pdev)
 	chip->batt_health = true;
 	chip->pre_batt_health = true;
 	chip->first_boot = true;
-
+	INIT_DELAYED_WORK(&chip->plugin_work, oplus_protection_plugin_work);
+	INIT_DELAYED_WORK(&chip->batt_check_work, oplus_protection_batt_check_work);
+	INIT_DELAYED_WORK(&chip->dual_cells_protect_track_work, oplus_dual_cells_protect_track_work);
 	rc = oplus_protection_topic_init(chip);
 	if (rc < 0) {
 		goto topic_reg_err;
 	}
-
-	INIT_DELAYED_WORK(&chip->plugin_work, oplus_protection_plugin_work);
-	INIT_DELAYED_WORK(&chip->batt_check_work, oplus_protection_batt_check_work);
-	INIT_DELAYED_WORK(&chip->dual_cells_protect_track_work, oplus_dual_cells_protect_track_work);
 
 	return 0;
 

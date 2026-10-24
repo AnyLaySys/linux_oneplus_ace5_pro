@@ -95,10 +95,6 @@
 	status = "disabled";
 };
 
-&{/soc@0/interconnect@1780000} {
-	status = "disabled";
-};
-
 &{/soc@0/crypto@1d88000} {
 	status = "disabled";
 };
@@ -180,15 +176,15 @@
 };
 
 &{/soc@0/phy@88e3000} {
-	status = "disabled";
+	status = "okay";
 };
 
 &{/soc@0/phy@88e8000} {
-	status = "disabled";
+	status = "okay";
 };
 
 &{/soc@0/usb@a600000} {
-	status = "disabled";
+	status = "okay";
 };
 
 &{/soc@0/video-codec@aa00000} {
@@ -196,14 +192,6 @@
 };
 
 &{/soc@0/clock-controller@aaf0000} {
-	status = "disabled";
-};
-
-&{/soc@0/display-subsystem@ae00000} {
-	status = "disabled";
-};
-
-&{/soc@0/clock-controller@af00000} {
 	status = "disabled";
 };
 
@@ -447,10 +435,6 @@
 	status = "disabled";
 };
 
-&{/soc@0/system-cache-controller@24800000} {
-	status = "disabled";
-};
-
 &{/soc@0/interconnect@320c0000} {
 	status = "disabled";
 };
@@ -639,7 +623,7 @@
 };
 
 &tlmm {
-	gpio-reserved-ranges = <0 2>, <3 13>, <17 7>, <28 16>, <46 2>, <52 14>, <68 4>, <74 27>, <105 16>, <125 36>, <165 41>, <208 7>;
+	gpio-reserved-ranges = <0 2>, <3 13>, <17 7>, <28 16>, <46 2>, <52 14>, <68 4>, <74 12>, <87 11>, <99 2>, <105 16>, <125 36>, <165 41>, <208 7>;
 
 	mi2s1_sck_active: mi2s1-sck-active-state {
 		pins = "gpio121";
@@ -747,6 +731,14 @@
 };
 
 &vreg_l4b_1p8 {
+	status = "okay";
+};
+
+&vreg_l2d_0p88 {
+	status = "okay";
+};
+
+&vreg_l5b_3p1 {
 	status = "okay";
 };
 

@@ -166,6 +166,7 @@ struct msm_dsi_host {
 
 	struct drm_display_mode *mode;
 	struct drm_dsc_config *dsc;
+	u8 dsc_slice_per_pkt;
 
 	/* connected device info */
 	unsigned int channel;
@@ -952,17 +953,11 @@ static void dsi_update_dsc_timing(struct msm_dsi_host *msm_host, bool is_cmd_mod
 	slice_per_intf = dsc->slice_count;
 
 	total_bytes_per_intf = dsc->slice_chunk_size * slice_per_intf;
-	bytes_per_pkt = dsc->slice_chunk_size; /* * slice_per_pkt; */
+	bytes_per_pkt = dsc->slice_chunk_size * msm_host->dsc_slice_per_pkt;
 
 	eol_byte_num = total_bytes_per_intf % 3;
 
-	/*
-	 * Typically, pkt_per_line = slice_per_intf * slice_per_pkt.
-	 *
-	 * Since the current driver only supports slice_per_pkt = 1,
-	 * pkt_per_line will be equal to slice per intf for now.
-	 */
-	pkt_per_line = slice_per_intf;
+	pkt_per_line = slice_per_intf / msm_host->dsc_slice_per_pkt;
 
 	if (is_cmd_mode) /* packet data type */
 		reg = DSI_COMMAND_COMPRESSION_MODE_CTRL_STREAM0_DATATYPE(MIPI_DSI_DCS_LONG_WRITE);
@@ -1116,14 +1111,7 @@ static void dsi_timing_setup(struct msm_dsi_host *msm_host, bool is_bonded_dsi)
 		if (!msm_host->dsc)
 			wc = hdisplay * mipi_dsi_pixel_format_to_bpp(msm_host->format) / 8 + 1;
 		else
-			/*
-			 * When DSC is enabled, WC = slice_chunk_size * slice_per_pkt + 1.
-			 * Currently, the driver only supports default value of slice_per_pkt = 1
-			 *
-			 * TODO: Expand mipi_dsi_device struct to hold slice_per_pkt info
-			 *       and adjust DSC math to account for slice_per_pkt.
-			 */
-			wc = msm_host->dsc->slice_chunk_size + 1;
+			wc = msm_host->dsc->slice_chunk_size * msm_host->dsc_slice_per_pkt + 1;
 
 		dsi_write(msm_host, REG_DSI_CMD_MDP_STREAM0_CTRL,
 			DSI_CMD_MDP_STREAM0_CTRL_WORD_COUNT(wc) |
@@ -1430,14 +1418,10 @@ static int dsi_long_read_resp(u8 *buf, const struct mipi_dsi_msg *msg)
 
 int dsi_dma_base_get_6g(struct msm_dsi_host *msm_host, uint64_t *dma_base)
 {
-	struct drm_device *dev = msm_host->dev;
-	struct msm_drm_private *priv = dev->dev_private;
-
 	if (!dma_base)
 		return -EINVAL;
 
-	return msm_gem_get_and_pin_iova(msm_host->tx_gem_obj,
-				priv->kms->vm, dma_base);
+	return msm_gem_get_iova(msm_host->tx_gem_obj, msm_host->vm, dma_base);
 }
 
 int dsi_dma_base_get_v2(struct msm_dsi_host *msm_host, uint64_t *dma_base)
@@ -1732,6 +1716,11 @@ static int dsi_host_attach(struct mipi_dsi_host *host,
 	msm_host->lanes = dsi->lanes;
 	msm_host->format = dsi->format;
 	msm_host->mode_flags = dsi->mode_flags;
+	msm_host->dsc_slice_per_pkt = dsi->dsc_slice_per_pkt ?: 1;
+	if (dsi->dsc && (!is_power_of_2(msm_host->dsc_slice_per_pkt) ||
+			msm_host->dsc_slice_per_pkt > dsi->dsc->slice_count ||
+			dsi->dsc->slice_count % msm_host->dsc_slice_per_pkt))
+		return -EINVAL;
 	if (dsi->dsc)
 		msm_host->dsc = dsi->dsc;
 
@@ -1913,8 +1902,8 @@ static int dsi_populate_dsc_params(struct msm_dsi_host *msm_host, struct drm_dsc
 	drm_dsc_set_const_params(dsc);
 	drm_dsc_set_rc_buf_thresh(dsc);
 
-	/* DPU supports only pre-SCR panels */
-	ret = drm_dsc_setup_rc_params(dsc, DRM_DSC_1_1_PRE_SCR);
+	ret = drm_dsc_setup_rc_params(dsc, dsc->dsc_version_minor >= 2 ?
+				    DRM_DSC_1_2_444 : DRM_DSC_1_1_PRE_SCR);
 	if (ret) {
 		DRM_DEV_ERROR(&msm_host->pdev->dev, "could not find DSC RC parameters\n");
 		return ret;
@@ -1922,6 +1911,10 @@ static int dsi_populate_dsc_params(struct msm_dsi_host *msm_host, struct drm_dsc
 
 	dsc->initial_scale_value = drm_dsc_initial_scale_value(dsc);
 	dsc->line_buf_depth = dsc->bits_per_component + 1;
+	if (dsc->dsc_version_minor >= 2)
+		dsc->first_line_bpg_offset = dsc->slice_height < 8 ?
+			2 * (dsc->slice_height - 1) :
+			12 + 9 * min_t(unsigned int, 34, dsc->slice_height - 8) / 100;
 
 	return drm_dsc_compute_rc_parameters(dsc);
 }
@@ -2536,7 +2529,6 @@ int msm_dsi_host_power_on(struct mipi_dsi_host *host,
 	dsi_timing_setup(msm_host, is_bonded_dsi);
 	dsi_sw_reset(msm_host);
 	dsi_ctrl_enable(msm_host, phy_shared_timings, phy);
-
 	msm_host->power_on = true;
 	mutex_unlock(&msm_host->dev_mutex);
 

@@ -298,6 +298,7 @@ static void msm_mdss_destroy(struct msm_mdss *msm_mdss)
 	struct platform_device *pdev = to_platform_device(msm_mdss->dev);
 	int irq;
 
+	pm_runtime_allow(msm_mdss->dev);
 	pm_runtime_suspend(msm_mdss->dev);
 	pm_runtime_disable(msm_mdss->dev);
 	irq_domain_remove(msm_mdss->irq_controller.domain);
@@ -368,10 +369,6 @@ static struct msm_mdss *msm_mdss_init(struct platform_device *pdev, bool is_mdp5
 	struct msm_mdss *msm_mdss;
 	int ret;
 	int irq;
-
-	ret = msm_mdss_reset(&pdev->dev);
-	if (ret)
-		return ERR_PTR(ret);
 
 	msm_mdss = devm_kzalloc(&pdev->dev, sizeof(*msm_mdss), GFP_KERNEL);
 	if (!msm_mdss)
@@ -479,6 +476,16 @@ static int mdss_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, mdss);
 
+	ret = pm_runtime_resume_and_get(dev);
+	if (ret < 0)
+		goto err_destroy;
+	ret = msm_mdss_reset(dev);
+	pm_runtime_put_sync(dev);
+	if (ret)
+		goto err_destroy;
+	if (of_device_is_compatible(dev->of_node, "qcom,sm8750-mdss"))
+		pm_runtime_forbid(dev);
+
 	/*
 	 * MDP5/DPU based devices don't have a flat hierarchy. There is a top
 	 * level parent: MDSS, and children: MDP5/DPU, DSI, HDMI, eDP etc.
@@ -488,11 +495,14 @@ static int mdss_probe(struct platform_device *pdev)
 	ret = of_platform_populate(dev->of_node, NULL, NULL, dev);
 	if (ret) {
 		DRM_DEV_ERROR(dev, "failed to populate children devices\n");
-		msm_mdss_destroy(mdss);
-		return ret;
+		goto err_destroy;
 	}
 
 	return 0;
+
+err_destroy:
+	msm_mdss_destroy(mdss);
+	return ret;
 }
 
 static void mdss_remove(struct platform_device *pdev)
