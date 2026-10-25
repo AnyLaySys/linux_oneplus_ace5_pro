@@ -48,6 +48,7 @@
 #include <oplus_chg_plc.h>
 #include "oplus_pmic_glink_id.h"
 #include <linux/pm_qos.h>
+#include <linux/usb/typec.h>
 
 #define BCC_TYPE_IS_SVOOC 1
 #define BCC_TYPE_IS_VOOC 0
@@ -1655,7 +1656,7 @@ static int oplus_otg_ap_enable(struct battery_chg_dev *bcdev, bool enable)
 	} else {
 	}
 	oplus_get_otg_online_status_with_cid_scheme(bcdev);
-	if (bcdev->cid_status != 0) {
+	if (!enable && bcdev->cid_status != 0) {
 		oplus_ccdetect_enable(bcdev);
 	}
 
@@ -8577,6 +8578,27 @@ static int oplus_chg_8350_set_typec_mode(struct oplus_chg_ic_dev *ic_dev,
 	return rc;
 }
 
+static int oplus_chg_8350_get_data_role(struct oplus_chg_ic_dev *ic_dev,
+					int *role)
+{
+	struct battery_chg_dev *bcdev;
+	enum oplus_chg_typec_port_role_type mode = TYPEC_PORT_ROLE_SNK;
+	int rc;
+
+	if (ic_dev == NULL || role == NULL)
+		return -ENODEV;
+
+	bcdev = oplus_chg_ic_get_drvdata(ic_dev);
+
+	rc = oplus_chg_8350_get_typec_mode(ic_dev, &mode);
+	if (rc < 0)
+		return rc;
+
+	*role = (mode == TYPEC_PORT_ROLE_SRC) ? TYPEC_HOST : TYPEC_DEVICE;
+
+	return 0;
+}
+
 static int oplus_chg_8350_set_otg_switch_status(struct oplus_chg_ic_dev *ic_dev,
 						bool en)
 {
@@ -10014,6 +10036,9 @@ static void *oplus_chg_8350_buck_get_func(struct oplus_chg_ic_dev *ic_dev, enum 
 		break;
 	case OPLUS_IC_FUNC_SET_TYPEC_MODE:
 		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_SET_TYPEC_MODE, oplus_chg_8350_set_typec_mode);
+		break;
+	case OPLUS_IC_FUNC_GET_DATA_ROLE:
+		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_GET_DATA_ROLE, oplus_chg_8350_get_data_role);
 		break;
 	case OPLUS_IC_FUNC_SET_OTG_SWITCH_STATUS:
 		func = OPLUS_CHG_IC_FUNC_CHECK(OPLUS_IC_FUNC_SET_OTG_SWITCH_STATUS, oplus_chg_8350_set_otg_switch_status);

@@ -86,7 +86,6 @@ struct dwc3_qcom {
 
 	enum usb_role		current_role;
 	bool			oplus_otg_boost;
-	struct delayed_work	otg_work;
 };
 
 #define to_dwc3_qcom(d) container_of((d), struct dwc3_qcom, dwc)
@@ -106,22 +105,6 @@ static int dwc3_qcom_set_otg_boost(enum usb_role role)
 	symbol_put(oplus_wired_usb_role_changed);
 
 	return ret;
-}
-
-static void dwc3_qcom_otg_work(struct work_struct *work)
-{
-	struct delayed_work *dwork = to_delayed_work(work);
-	struct dwc3_qcom *qcom = container_of(dwork, struct dwc3_qcom, otg_work);
-	int ret;
-
-	if (qcom->current_role != USB_ROLE_HOST || qcom->oplus_otg_boost)
-		return;
-
-	ret = dwc3_qcom_set_otg_boost(USB_ROLE_HOST);
-	if (!ret)
-		qcom->oplus_otg_boost = true;
-	else if (ret == -EPROBE_DEFER)
-		schedule_delayed_work(&qcom->otg_work, msecs_to_jiffies(500));
 }
 
 static inline void dwc3_qcom_setbits(void __iomem *base, u32 offset, u32 val)
@@ -597,11 +580,6 @@ static void dwc3_qcom_set_role_notifier(struct dwc3 *dwc, enum usb_role next_rol
 {
 	struct dwc3_qcom *qcom = to_dwc3_qcom(dwc);
 
-	if (qcom->mode == USB_DR_MODE_HOST ||
-	    (qcom->mode == USB_DR_MODE_OTG &&
-	     usb_get_role_switch_default_mode(qcom->dev) == USB_DR_MODE_HOST))
-		next_role = USB_ROLE_HOST;
-
 	if (next_role == USB_ROLE_HOST && !qcom->oplus_otg_boost) {
 		int ret = dwc3_qcom_set_otg_boost(next_role);
 
@@ -675,7 +653,6 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	qcom->dev = &pdev->dev;
-	INIT_DELAYED_WORK(&qcom->otg_work, dwc3_qcom_otg_work);
 
 	qcom->resets = devm_reset_control_array_get_optional_exclusive(dev);
 	if (IS_ERR(qcom->resets)) {
@@ -772,8 +749,6 @@ static int dwc3_qcom_probe(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, wakeup_source);
 
 	qcom->is_suspended = false;
-	if (qcom->current_role == USB_ROLE_HOST)
-		schedule_delayed_work(&qcom->otg_work, msecs_to_jiffies(500));
 
 	return 0;
 
@@ -790,7 +765,6 @@ static void dwc3_qcom_remove(struct platform_device *pdev)
 	struct dwc3 *dwc = platform_get_drvdata(pdev);
 	struct dwc3_qcom *qcom = to_dwc3_qcom(dwc);
 
-	cancel_delayed_work_sync(&qcom->otg_work);
 	if (pm_runtime_resume_and_get(qcom->dev) < 0)
 		return;
 

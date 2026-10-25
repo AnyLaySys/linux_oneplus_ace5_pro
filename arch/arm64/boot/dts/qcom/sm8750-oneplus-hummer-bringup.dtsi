@@ -184,7 +184,6 @@
 };
 
 &{/soc@0/usb@a600000} {
-	role-switch-default-mode = "host";
 	status = "okay";
 };
 

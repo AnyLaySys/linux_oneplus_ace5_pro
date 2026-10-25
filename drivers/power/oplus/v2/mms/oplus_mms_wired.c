@@ -1925,18 +1925,27 @@ int oplus_wired_set_typec_mode(enum oplus_chg_typec_port_role_type mode)
 	return rc;
 }
 
+static int oplus_wired_set_otg_enable(struct oplus_mms_wired *chip, bool enable);
+
 int oplus_wired_set_otg_switch_status(bool en)
 {
-	int rc = 0;
 	struct oplus_mms_wired *chip = g_mms_wired;
+	int rc;
 
-	if (chip == NULL) {
+	if (chip == NULL)
 		return -ENODEV;
-	}
+
+	mutex_lock(&chip->otg_lock);
 
 	rc = oplus_chg_ic_func(chip->buck_ic,
-			       OPLUS_IC_FUNC_SET_OTG_SWITCH_STATUS,
-			       en);
+			       OPLUS_IC_FUNC_SET_OTG_SWITCH_STATUS, en);
+	if (rc < 0)
+		goto out;
+
+	rc = oplus_wired_set_otg_enable(chip, en);
+
+out:
+	mutex_unlock(&chip->otg_lock);
 
 	return rc;
 }
@@ -3738,6 +3747,10 @@ static int oplus_wired_set_otg_enable(struct oplus_mms_wired *chip, bool enable)
 
 
 		rc = oplus_wired_set_otg_boost_vol(OTG_BOOST_VOL_THRESHOLD);
+
+		rc = oplus_wired_set_typec_mode(TYPEC_PORT_ROLE_SRC);
+		if (rc < 0)
+			dev_warn(chip->dev, "failed to set typec source role, rc=%d\n", rc);
 	}
 	rc = oplus_chg_ic_func(chip->buck_ic,
 			       OPLUS_IC_FUNC_OTG_BOOST_ENABLE, enable);
