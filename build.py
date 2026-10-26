@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 import subprocess
 ROOT=Path(__file__).resolve().parent
-DEFCONFIG="oneplus_ace5_pro_defconfig"
 DTB="qcom/sm8750-oneplus-hummer.dtb"
 def main():
     parser=argparse.ArgumentParser(description="Build the OnePlus Ace 5 Pro Linux kernel, DTB and modules")
